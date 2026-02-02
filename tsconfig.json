@@ -1,0 +1,13 @@
+{
+  "extends": "@tractorbeam/typescript-config/node22",
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "declaration": true,
+    "isolatedDeclarations": true,
+    "skipLibCheck": true
+  },
+  "include": ["src", "tests"],
+  "exclude": ["tests/fixtures"]
+}

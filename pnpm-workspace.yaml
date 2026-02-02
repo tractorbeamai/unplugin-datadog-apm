@@ -1,0 +1,16 @@
+packages:
+  - "examples/*"
+
+allowBuilds:
+  "@datadog/native-appsec": true
+  "@datadog/native-iast-taint-tracking": true
+  "@datadog/native-metrics": true
+  "@datadog/pprof": true
+  dd-trace: true
+  esbuild: false
+
+trustPolicy: no-downgrade
+
+trustPolicyExclude:
+  - chokidar@4.0.3
+  - semver@6.3.1
