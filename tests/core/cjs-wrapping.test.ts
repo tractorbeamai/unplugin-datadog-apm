@@ -7,42 +7,35 @@ import path from "node:path";
 import commonjs from "@rollup/plugin-commonjs";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { rollup } from "rollup";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import rollupPlugin from "../../src/rollup";
-import { createFixture, createTempDir } from "../utils";
+import {
+  combineFixtures,
+  createAwsSdkS3Fixture,
+  createAwsSdkSmithyClientFixture,
+  createIoredisFixture,
+  createLodashFixture,
+  createPinoFixture,
+} from "../helpers/fixtures";
+import { useTempDir } from "../helpers/temp-dir";
+import { createFixture } from "../utils";
 
 describe("CJS module wrapping", () => {
-  let tempDir: string;
-  let cleanup: () => void;
-
-  beforeEach(() => {
-    const temp = createTempDir();
-    tempDir = temp.tempDir;
-    cleanup = temp.cleanup;
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
+  const temp = useTempDir();
 
   describe("basic wrapping", () => {
     it("wraps CommonJS pino module with dc-polyfill channel", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -58,21 +51,16 @@ describe("CJS module wrapping", () => {
     });
 
     it("wraps CommonJS ioredis module", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const Redis = require('ioredis'); module.exports = Redis;`,
-        "node_modules/ioredis/package.json": JSON.stringify({
-          name: "ioredis",
-          version: "5.3.0",
-          main: "index.js",
-        }),
-        "node_modules/ioredis/index.js": `module.exports = function Redis() {};`,
+        ...createIoredisFixture("5.3.0"),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -89,20 +77,16 @@ describe("CJS module wrapping", () => {
 
   describe("submodule imports", () => {
     it("includes package path for submodule imports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const get = require('lodash/get'); module.exports = get;`,
-        "node_modules/lodash/package.json": JSON.stringify({
-          name: "lodash",
-          version: "4.17.21",
-        }),
-        "node_modules/lodash/get.js": `module.exports = function get() {};`,
+        ...createLodashFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -116,20 +100,16 @@ describe("CJS module wrapping", () => {
     });
 
     it("handles deep submodule paths", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const get = require('lodash/fp/get'); module.exports = get;`,
-        "node_modules/lodash/package.json": JSON.stringify({
-          name: "lodash",
-          version: "4.17.21",
-        }),
-        "node_modules/lodash/fp/get.js": `module.exports = function get() {};`,
+        ...createLodashFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -146,21 +126,16 @@ describe("CJS module wrapping", () => {
   describe("scoped packages", () => {
     it("handles @scope/package correctly", async () => {
       // @aws-sdk/smithy-client is in dd-trace hooks list
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const smithy = require('@aws-sdk/smithy-client'); module.exports = smithy;`,
-        "node_modules/@aws-sdk/smithy-client/package.json": JSON.stringify({
-          name: "@aws-sdk/smithy-client",
-          version: "3.400.0",
-          main: "index.js",
-        }),
-        "node_modules/@aws-sdk/smithy-client/index.js": `module.exports = { Client: function() {} };`,
+        ...createAwsSdkSmithyClientFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -174,24 +149,19 @@ describe("CJS module wrapping", () => {
     });
 
     it("handles scoped package with additionalModules", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const { GetObjectCommand } = require('@aws-sdk/client-s3'); module.exports = GetObjectCommand;`,
-        "node_modules/@aws-sdk/client-s3/package.json": JSON.stringify({
-          name: "@aws-sdk/client-s3",
-          version: "3.500.0",
-          main: "index.js",
-        }),
-        "node_modules/@aws-sdk/client-s3/index.js": `module.exports = { GetObjectCommand: function() {} };`,
+        ...createAwsSdkS3Fixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({
             debug: false,
             additionalModules: ["@aws-sdk/client-s3"],
           }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -206,7 +176,7 @@ describe("CJS module wrapping", () => {
     });
 
     it("handles nested node_modules", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const parent = require('parent-pkg'); module.exports = parent;`,
         "node_modules/parent-pkg/package.json": JSON.stringify({
           name: "parent-pkg",
@@ -227,10 +197,10 @@ describe("CJS module wrapping", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["parent-pkg"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -246,31 +216,20 @@ describe("CJS module wrapping", () => {
 
   describe("multiple modules", () => {
     it("wraps multiple instrumentable modules in same bundle", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           const pino = require('pino');
           const Redis = require('ioredis');
           module.exports = { pino, Redis };
         `,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
-        "node_modules/ioredis/package.json": JSON.stringify({
-          name: "ioredis",
-          version: "5.3.0",
-          main: "index.js",
-        }),
-        "node_modules/ioredis/index.js": `module.exports = function Redis() {};`,
+        ...combineFixtures(createPinoFixture(), createIoredisFixture("5.3.0")),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],

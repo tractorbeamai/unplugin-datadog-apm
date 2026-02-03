@@ -4,7 +4,6 @@
  * @module
  */
 
-import { createBundlerEntry } from "./entrypoints/shared";
 import { DatadogAPM } from "./index";
 
 /**
@@ -20,8 +19,6 @@ import { DatadogAPM } from "./index";
  * }
  * ```
  */
-const rolldown: typeof DatadogAPM.rolldown = createBundlerEntry(
-  DatadogAPM.rolldown,
-);
+const rolldown: typeof DatadogAPM.rolldown = DatadogAPM.rolldown;
 export default rolldown;
 export { rolldown as "module.exports" };

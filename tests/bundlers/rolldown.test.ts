@@ -14,6 +14,11 @@ import {
   expectInstrumented,
   expectNotInstrumented,
 } from "../helpers/assertions";
+import {
+  createCustomCjsFixture,
+  createPinoFixture,
+  createUndiciFixture,
+} from "../helpers/fixtures";
 import { useTempDir } from "../helpers/temp-dir";
 import { createFixture } from "../utils";
 
@@ -36,12 +41,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
     it("wraps CJS modules for instrumentation", async () => {
       createFixture(temp.dir, {
         "index.js": `import pino from 'pino'; export default pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rolldown({
@@ -68,12 +68,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
     it("respects excludeModules option", async () => {
       createFixture(temp.dir, {
         "index.js": `import pino from 'pino'; export default pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rolldown({
@@ -100,12 +95,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
     it("respects additionalModules option", async () => {
       createFixture(temp.dir, {
         "index.js": `import custom from 'custom-pkg'; export default custom;`,
-        "node_modules/custom-pkg/package.json": JSON.stringify({
-          name: "custom-pkg",
-          version: "1.0.0",
-          main: "index.js",
-        }),
-        "node_modules/custom-pkg/index.js": `module.exports = { hello: "world" };`,
+        ...createCustomCjsFixture("custom-pkg"),
       });
 
       const bundle = await rolldown({
@@ -139,13 +129,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
     it("creates ESM proxy for ESM modules", async () => {
       createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       const bundle = await rolldown({
@@ -173,13 +157,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
     it("works with ESM format", async () => {
       createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       const bundle = await rolldown({
@@ -203,12 +181,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
     it("works with CJS format", async () => {
       createFixture(temp.dir, {
         "index.js": `import pino from 'pino'; export default pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rolldown({

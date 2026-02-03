@@ -3,29 +3,19 @@ import path from "node:path";
 import commonjs from "@rollup/plugin-commonjs";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { rollup } from "rollup";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import rollupPlugin from "../../src/rollup";
-import { createFixture, createTempDir } from "../utils";
+import { useTempDir } from "../helpers/temp-dir";
+import { createFixture } from "../utils";
 
 describe("error handling", () => {
-  let tempDir: string;
-  let cleanup: () => void;
-
-  beforeEach(() => {
-    const temp = createTempDir();
-    tempDir = temp.tempDir;
-    cleanup = temp.cleanup;
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
+  const temp = useTempDir();
 
   describe("unresolvable modules", () => {
     it("continues gracefully when instrumentable module cannot be resolved", async () => {
       // Entry imports pino but pino doesn't exist in node_modules
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           // This import will fail to resolve but the plugin should handle it gracefully
           let pino;
@@ -40,10 +30,10 @@ describe("error handling", () => {
 
       // Build should complete without throwing
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         onwarn() {
@@ -62,7 +52,7 @@ describe("error handling", () => {
   describe("missing package.json", () => {
     it("continues gracefully when package.json is missing", async () => {
       // Create module directory without package.json
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
         "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
         // Note: no package.json for pino
@@ -70,10 +60,10 @@ describe("error handling", () => {
 
       // Build should complete without throwing
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         onwarn() {
@@ -91,7 +81,7 @@ describe("error handling", () => {
 
   describe("malformed package.json", () => {
     it("continues gracefully when package.json is invalid JSON", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
         "node_modules/pino/package.json": `{ invalid json syntax`,
         "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
@@ -99,10 +89,10 @@ describe("error handling", () => {
 
       // Build should complete without throwing
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         onwarn() {
@@ -118,7 +108,7 @@ describe("error handling", () => {
     });
 
     it('uses "unknown" version when package.json has no version field', async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
         "node_modules/pino/package.json": JSON.stringify({
           name: "pino",
@@ -129,10 +119,10 @@ describe("error handling", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -150,7 +140,7 @@ describe("error handling", () => {
   describe("malformed ESM code", () => {
     it("falls back to default export when exports cannot be parsed", async () => {
       // Create ESM module with syntax that might confuse simple regex parsing
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { something } from 'complex-esm'; export { something };`,
         "node_modules/complex-esm/package.json": JSON.stringify({
           name: "complex-esm",
@@ -170,10 +160,10 @@ describe("error handling", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["complex-esm"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -187,7 +177,7 @@ describe("error handling", () => {
     });
 
     it("handles modules with no detectable exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import mod from 'minimal-esm'; export default mod;`,
         "node_modules/minimal-esm/package.json": JSON.stringify({
           name: "minimal-esm",
@@ -203,10 +193,10 @@ describe("error handling", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["minimal-esm"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
         onwarn() {
@@ -224,7 +214,7 @@ describe("error handling", () => {
 
   describe("non-instrumentable scenarios", () => {
     it("skips modules that are not in hooks list and not in additionalModules", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const foo = require('not-instrumentable'); module.exports = foo;`,
         "node_modules/not-instrumentable/package.json": JSON.stringify({
           name: "not-instrumentable",
@@ -235,10 +225,10 @@ describe("error handling", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
       });

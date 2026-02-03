@@ -18,7 +18,8 @@ const require = createRequire(import.meta.url);
 
 /**
  * Nitro plugin that initializes dd-trace at server startup.
- * Exported as a plain function - Nitro's defineNitroPlugin is just a passthrough.
+ *
+ * Exported as a plain function; Nitro's defineNitroPlugin is a passthrough.
  */
 export default function datadogApmPlugin(): void {
   initTracer({

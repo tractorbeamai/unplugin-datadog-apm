@@ -1,11 +1,17 @@
 import type { Tracer } from "dd-trace";
 
+/**
+ * Human-readable debug messages for the tracer init flow.
+ */
 interface DebugMessages {
   init: string;
   tracerProvider: string;
   loaderHook?: string;
 }
 
+/**
+ * Runtime options for initializing dd-trace.
+ */
 export interface InitTracerOptions {
   require: NodeJS.Require;
   debug: boolean;
@@ -23,11 +29,29 @@ export interface InitTracerOptions {
   isMainThread?: boolean;
 }
 
+/**
+ * Print a debug message when logging is enabled.
+ *
+ * @param enabled - Whether debug logging is active.
+ * @param message - Message to print when provided.
+ */
 function logDebug(enabled: boolean, message: string | undefined): void {
   if (!enabled || !message) return;
   console.log(message);
 }
 
+/**
+ * Initialize dd-trace and optionally register the ESM loader hook.
+ *
+ * Call this once at process startup before application code loads.
+ *
+ * @example
+ * initTracer({
+ *   require,
+ *   debug: false,
+ *   debugMessages: { init: "", tracerProvider: "" },
+ * });
+ */
 export function initTracer(options: InitTracerOptions): void {
   if (options.isMainThread === false) return;
 

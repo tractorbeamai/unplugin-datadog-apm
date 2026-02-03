@@ -12,6 +12,11 @@ interface RspackConfigOptions {
   logger: ConsolaInstance;
 }
 
+/**
+ * Create rspack configuration hooks for dd-trace integration.
+ *
+ * @param options - Logger for diagnostics.
+ */
 export function createRspackConfig({
   logger,
 }: RspackConfigOptions): RspackHook {

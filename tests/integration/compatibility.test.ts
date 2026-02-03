@@ -8,43 +8,29 @@ import path from "node:path";
 import commonjs from "@rollup/plugin-commonjs";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { rollup } from "rollup";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import rollupPlugin from "../../src/rollup";
-import { createFixture, createTempDir } from "../utils";
+import { createPinoFixture } from "../helpers/fixtures";
+import { useTempDir } from "../helpers/temp-dir";
+import { createFixture } from "../utils";
 
 describe("compatibility", () => {
-  let tempDir: string;
-  let cleanup: () => void;
-
-  beforeEach(() => {
-    const temp = createTempDir();
-    tempDir = temp.tempDir;
-    cleanup = temp.cleanup;
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
+  const temp = useTempDir();
 
   describe("package manager structures", () => {
     describe("npm/yarn classic", () => {
       it("works with flat node_modules", async () => {
-        createFixture(tempDir, {
+        createFixture(temp.dir, {
           "index.js": `const pino = require('pino'); module.exports = pino;`,
-          "node_modules/pino/package.json": JSON.stringify({
-            name: "pino",
-            version: "8.0.0",
-            main: "index.js",
-          }),
-          "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+          ...createPinoFixture(),
         });
 
         const bundle = await rollup({
-          input: path.join(tempDir, "index.js"),
+          input: path.join(temp.dir, "index.js"),
           plugins: [
             rollupPlugin({ debug: false }),
-            nodeResolve({ rootDir: tempDir }),
+            nodeResolve({ rootDir: temp.dir }),
             commonjs(),
           ],
           external: ["dc-polyfill"],
@@ -60,7 +46,7 @@ describe("compatibility", () => {
 
     describe("pnpm", () => {
       it("works with pnpm-style .pnpm directory structure", async () => {
-        createFixture(tempDir, {
+        createFixture(temp.dir, {
           "index.js": `const pino = require('pino'); module.exports = pino;`,
           "node_modules/.pnpm/pino@8.0.0/node_modules/pino/package.json":
             JSON.stringify({
@@ -78,10 +64,10 @@ describe("compatibility", () => {
         });
 
         const bundle = await rollup({
-          input: path.join(tempDir, "index.js"),
+          input: path.join(temp.dir, "index.js"),
           plugins: [
             rollupPlugin({ debug: false }),
-            nodeResolve({ rootDir: tempDir }),
+            nodeResolve({ rootDir: temp.dir }),
             commonjs(),
           ],
           external: ["dc-polyfill"],
@@ -95,7 +81,7 @@ describe("compatibility", () => {
       });
 
       it("handles nested pnpm dependencies", async () => {
-        createFixture(tempDir, {
+        createFixture(temp.dir, {
           "index.js": `const parent = require('parent-pkg'); module.exports = parent;`,
           "node_modules/parent-pkg/package.json": JSON.stringify({
             name: "parent-pkg",
@@ -115,10 +101,10 @@ describe("compatibility", () => {
         });
 
         const bundle = await rollup({
-          input: path.join(tempDir, "index.js"),
+          input: path.join(temp.dir, "index.js"),
           plugins: [
             rollupPlugin({ debug: false, additionalModules: ["parent-pkg"] }),
-            nodeResolve({ rootDir: tempDir }),
+            nodeResolve({ rootDir: temp.dir }),
             commonjs(),
           ],
           external: ["dc-polyfill"],
@@ -134,7 +120,7 @@ describe("compatibility", () => {
 
     describe("monorepo workspaces", () => {
       it("handles workspace package references", async () => {
-        createFixture(tempDir, {
+        createFixture(temp.dir, {
           "packages/app/index.js": `
             const shared = require('@myorg/shared');
             const pino = require('pino');
@@ -159,10 +145,10 @@ describe("compatibility", () => {
         });
 
         const bundle = await rollup({
-          input: path.join(tempDir, "packages/app/index.js"),
+          input: path.join(temp.dir, "packages/app/index.js"),
           plugins: [
             rollupPlugin({ debug: false }),
-            nodeResolve({ rootDir: tempDir }),
+            nodeResolve({ rootDir: temp.dir }),
             commonjs(),
           ],
           external: ["dc-polyfill"],
@@ -178,7 +164,7 @@ describe("compatibility", () => {
 
     describe("hoisting edge cases", () => {
       it("handles deeply nested node_modules (no hoisting)", async () => {
-        createFixture(tempDir, {
+        createFixture(temp.dir, {
           "index.js": `const parent = require('parent'); module.exports = parent;`,
           "node_modules/parent/package.json": JSON.stringify({
             name: "parent",
@@ -200,13 +186,13 @@ describe("compatibility", () => {
         });
 
         const bundle = await rollup({
-          input: path.join(tempDir, "index.js"),
+          input: path.join(temp.dir, "index.js"),
           plugins: [
             rollupPlugin({
               debug: false,
               additionalModules: ["parent", "child"],
             }),
-            nodeResolve({ rootDir: tempDir }),
+            nodeResolve({ rootDir: temp.dir }),
             commonjs(),
           ],
           external: ["dc-polyfill"],
@@ -222,7 +208,7 @@ describe("compatibility", () => {
 
   describe("version handling", () => {
     it("handles numeric version in package.json", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
         "node_modules/pino/package.json": JSON.stringify({
           name: "pino",
@@ -233,10 +219,10 @@ describe("compatibility", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -250,7 +236,7 @@ describe("compatibility", () => {
     });
 
     it("handles pre-release version strings", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
         "node_modules/pino/package.json": JSON.stringify({
           name: "pino",
@@ -261,10 +247,10 @@ describe("compatibility", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -279,7 +265,7 @@ describe("compatibility", () => {
 
   describe("module resolution edge cases", () => {
     it("handles package with only exports field (no main)", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
         "node_modules/pino/package.json": JSON.stringify({
           name: "pino",
@@ -292,10 +278,10 @@ describe("compatibility", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir, exportConditions: ["node"] }),
+          nodeResolve({ rootDir: temp.dir, exportConditions: ["node"] }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -309,7 +295,7 @@ describe("compatibility", () => {
     });
 
     it("handles conditional exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
         "node_modules/pino/package.json": JSON.stringify({
           name: "pino",
@@ -326,11 +312,11 @@ describe("compatibility", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
           nodeResolve({
-            rootDir: tempDir,
+            rootDir: temp.dir,
             exportConditions: ["node", "require"],
           }),
           commonjs(),
@@ -345,7 +331,7 @@ describe("compatibility", () => {
     });
 
     it("handles very deep submodule paths", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const util = require('lodash/fp/collection/map'); module.exports = util;`,
         "node_modules/lodash/package.json": JSON.stringify({
           name: "lodash",
@@ -355,10 +341,10 @@ describe("compatibility", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -374,7 +360,7 @@ describe("compatibility", () => {
 
   describe("CJS edge cases", () => {
     it("handles module that reassigns module.exports multiple times", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
         "node_modules/pino/package.json": JSON.stringify({
           name: "pino",
@@ -389,10 +375,10 @@ describe("compatibility", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -406,7 +392,7 @@ describe("compatibility", () => {
     });
 
     it("handles module using exports shorthand", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
         "node_modules/pino/package.json": JSON.stringify({
           name: "pino",
@@ -420,10 +406,10 @@ describe("compatibility", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -436,7 +422,7 @@ describe("compatibility", () => {
     });
 
     it("handles TypeScript-style export assignment pattern", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
         "node_modules/pino/package.json": JSON.stringify({
           name: "pino",
@@ -451,10 +437,10 @@ describe("compatibility", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -469,7 +455,7 @@ describe("compatibility", () => {
 
   describe("multiple entry points", () => {
     it("handles multiple entry points sharing same module", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "entry1.js": `const pino = require('pino'); module.exports = { entry: 1, pino };`,
         "entry2.js": `const pino = require('pino'); module.exports = { entry: 2, pino };`,
         "node_modules/pino/package.json": JSON.stringify({
@@ -482,12 +468,12 @@ describe("compatibility", () => {
 
       const bundle = await rollup({
         input: [
-          path.join(tempDir, "entry1.js"),
-          path.join(tempDir, "entry2.js"),
+          path.join(temp.dir, "entry1.js"),
+          path.join(temp.dir, "entry2.js"),
         ],
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],

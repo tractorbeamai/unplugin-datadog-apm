@@ -14,6 +14,11 @@ interface WebpackLikeConfigOptions {
   bundlerName: "webpack" | "rspack";
 }
 
+/**
+ * Create a webpack-style compiler hook for dd-trace externals.
+ *
+ * @param options - Logger and bundler name for diagnostics.
+ */
 export function createWebpackLikeConfig({
   logger,
   bundlerName,

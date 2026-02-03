@@ -7,28 +7,24 @@ import path from "node:path";
 import commonjs from "@rollup/plugin-commonjs";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { rollup } from "rollup";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import rollupPlugin from "../../src/rollup";
-import { createFixture, createTempDir } from "../utils";
+import {
+  combineFixtures,
+  createCustomCjsFixture,
+  createIoredisFixture,
+  createPinoFixture,
+} from "../helpers/fixtures";
+import { useTempDir } from "../helpers/temp-dir";
+import { createFixture } from "../utils";
 
 describe("module filtering", () => {
-  let tempDir: string;
-  let cleanup: () => void;
-
-  beforeEach(() => {
-    const temp = createTempDir();
-    tempDir = temp.tempDir;
-    cleanup = temp.cleanup;
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
+  const temp = useTempDir();
 
   describe("default filtering", () => {
     it("does not wrap modules not in dd-trace hooks list", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const foo = require('unknown-module'); module.exports = foo;`,
         "node_modules/unknown-module/package.json": JSON.stringify({
           name: "unknown-module",
@@ -39,10 +35,10 @@ describe("module filtering", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
       });
@@ -55,21 +51,16 @@ describe("module filtering", () => {
     });
 
     it("wraps modules that are in dd-trace hooks list", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -84,21 +75,16 @@ describe("module filtering", () => {
 
   describe("excludeModules option", () => {
     it("excludes modules in excludeModules option", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, excludeModules: ["pino"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
       });
@@ -110,31 +96,20 @@ describe("module filtering", () => {
     });
 
     it("can exclude multiple modules", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           const pino = require('pino');
           const Redis = require('ioredis');
           module.exports = { pino, Redis };
         `,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
-        "node_modules/ioredis/package.json": JSON.stringify({
-          name: "ioredis",
-          version: "5.3.0",
-          main: "index.js",
-        }),
-        "node_modules/ioredis/index.js": `module.exports = function Redis() {};`,
+        ...combineFixtures(createPinoFixture(), createIoredisFixture("5.3.0")),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, excludeModules: ["pino", "ioredis"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
       });
@@ -146,31 +121,20 @@ describe("module filtering", () => {
     });
 
     it("excludes only specified modules, keeps others", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           const pino = require('pino');
           const Redis = require('ioredis');
           module.exports = { pino, Redis };
         `,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
-        "node_modules/ioredis/package.json": JSON.stringify({
-          name: "ioredis",
-          version: "5.3.0",
-          main: "index.js",
-        }),
-        "node_modules/ioredis/index.js": `module.exports = function Redis() {};`,
+        ...combineFixtures(createPinoFixture(), createIoredisFixture("5.3.0")),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, excludeModules: ["pino"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -187,21 +151,20 @@ describe("module filtering", () => {
 
   describe("additionalModules option", () => {
     it("includes modules in additionalModules option", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const custom = require('custom-module'); module.exports = custom;`,
-        "node_modules/custom-module/package.json": JSON.stringify({
-          name: "custom-module",
-          version: "1.0.0",
-          main: "index.js",
-        }),
-        "node_modules/custom-module/index.js": `module.exports = {};`,
+        ...createCustomCjsFixture(
+          "custom-module",
+          "1.0.0",
+          `module.exports = {};`,
+        ),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["custom-module"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -215,34 +178,34 @@ describe("module filtering", () => {
     });
 
     it("can add multiple additional modules", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           const custom1 = require('custom-one');
           const custom2 = require('custom-two');
           module.exports = { custom1, custom2 };
         `,
-        "node_modules/custom-one/package.json": JSON.stringify({
-          name: "custom-one",
-          version: "1.0.0",
-          main: "index.js",
-        }),
-        "node_modules/custom-one/index.js": `module.exports = { name: 'one' };`,
-        "node_modules/custom-two/package.json": JSON.stringify({
-          name: "custom-two",
-          version: "2.0.0",
-          main: "index.js",
-        }),
-        "node_modules/custom-two/index.js": `module.exports = { name: 'two' };`,
+        ...combineFixtures(
+          createCustomCjsFixture(
+            "custom-one",
+            "1.0.0",
+            `module.exports = { name: 'one' };`,
+          ),
+          createCustomCjsFixture(
+            "custom-two",
+            "2.0.0",
+            `module.exports = { name: 'two' };`,
+          ),
+        ),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({
             debug: false,
             additionalModules: ["custom-one", "custom-two"],
           }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -256,7 +219,7 @@ describe("module filtering", () => {
     });
 
     it("works with scoped packages in additionalModules", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pkg = require('@myorg/my-pkg'); module.exports = pkg;`,
         "node_modules/@myorg/my-pkg/package.json": JSON.stringify({
           name: "@myorg/my-pkg",
@@ -264,13 +227,13 @@ describe("module filtering", () => {
           main: "index.js",
         }),
         "node_modules/@myorg/my-pkg/index.js": `module.exports = {};`,
-      });
+      }); // Keep scoped package fixture inline as it's a one-off
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["@myorg/my-pkg"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -286,13 +249,13 @@ describe("module filtering", () => {
 
   describe("local imports", () => {
     it("does not wrap local imports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { helper } from './utils.js'; export { helper };`,
         "utils.js": `export const helper = () => {};`,
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [rollupPlugin({ debug: false })],
       });
 
@@ -304,7 +267,7 @@ describe("module filtering", () => {
     });
 
     it("does not wrap relative imports from app code", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { a } from './lib/a.js';
           import { b } from '../shared/b.js';
@@ -315,7 +278,7 @@ describe("module filtering", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [rollupPlugin({ debug: false })],
         onwarn() {
           // Suppress warnings about missing ../shared/b.js
@@ -332,7 +295,7 @@ describe("module filtering", () => {
 
   describe("Node.js builtins", () => {
     it("skips Node.js builtin modules", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import fs from 'node:fs';
           import path from 'node:path';
@@ -342,7 +305,7 @@ describe("module filtering", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [rollupPlugin({ debug: false })],
         external: ["node:fs", "node:path", "http"],
       });
@@ -356,7 +319,7 @@ describe("module filtering", () => {
     });
 
     it("skips builtins with node: prefix", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import crypto from 'node:crypto';
           import stream from 'node:stream';
@@ -365,7 +328,7 @@ describe("module filtering", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [rollupPlugin({ debug: false })],
         external: ["node:crypto", "node:stream"],
       });
@@ -377,7 +340,7 @@ describe("module filtering", () => {
     });
 
     it("skips builtins without node: prefix", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import fs from 'fs';
           import path from 'path';
@@ -386,7 +349,7 @@ describe("module filtering", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [rollupPlugin({ debug: false })],
         external: ["fs", "path"],
       });

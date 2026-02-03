@@ -12,6 +12,11 @@ interface WebpackConfigOptions {
   logger: ConsolaInstance;
 }
 
+/**
+ * Create webpack configuration hooks for dd-trace integration.
+ *
+ * @param options - Logger for diagnostics.
+ */
 export function createWebpackConfig({
   logger,
 }: WebpackConfigOptions): WebpackHook {

@@ -4,7 +4,6 @@
  * @module
  */
 
-import { createBundlerEntry } from "./entrypoints/shared";
 import { DatadogAPM } from "./index";
 
 /**
@@ -20,8 +19,6 @@ import { DatadogAPM } from "./index";
  * }
  * ```
  */
-const webpack: typeof DatadogAPM.webpack = createBundlerEntry(
-  DatadogAPM.webpack,
-);
+const webpack: typeof DatadogAPM.webpack = DatadogAPM.webpack;
 export default webpack;
 export { webpack as "module.exports" };

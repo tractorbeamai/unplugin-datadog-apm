@@ -9,10 +9,22 @@ export type MemberExpressionNode = Node & {
   start: number;
 };
 
+/**
+ * Check whether a node is an Identifier with a specific name.
+ *
+ * @param node - AST node to check.
+ * @param name - Expected identifier name.
+ */
 export function isIdentifier(node: Node, name: string): node is IdentifierNode {
   return node.type === "Identifier" && (node as IdentifierNode).name === name;
 }
 
+/**
+ * Check whether a node is a string literal with a specific value.
+ *
+ * @param node - AST node to check.
+ * @param value - Expected string value.
+ */
 export function isStringLiteral(
   node: Node,
   value: string,
@@ -20,6 +32,11 @@ export function isStringLiteral(
   return node.type === "Literal" && (node as LiteralNode).value === value;
 }
 
+/**
+ * Detect `module.exports` member expressions.
+ *
+ * @param node - AST node to check.
+ */
 export function isModuleExportsMemberExpression(
   node: Node,
 ): node is MemberExpressionNode {

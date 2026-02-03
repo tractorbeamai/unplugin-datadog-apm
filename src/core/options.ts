@@ -1,3 +1,6 @@
+/**
+ * User-facing plugin options.
+ */
 export interface Options {
   /** Enable debug logging (default: !!process.env.DD_TRACE_DEBUG) */
   debug?: boolean;
@@ -17,6 +20,12 @@ export interface Options {
 
 export type OptionsResolved = Required<Options>;
 
+/**
+ * Normalize plugin options by applying defaults.
+ *
+ * @param options - Partial options provided by the user.
+ * @returns Fully resolved options.
+ */
 export function resolveOptions(options: Options): OptionsResolved {
   return {
     debug: options.debug ?? !!process.env.DD_TRACE_DEBUG,

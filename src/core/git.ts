@@ -12,10 +12,9 @@ export interface GitMetadata {
 }
 
 /**
- * Extract git metadata from the current repository.
+ * Read git metadata from the current repository.
  *
- * Returns repository URL and commit SHA if available.
- * Silently returns empty values if git is not available.
+ * @returns Repository URL and commit SHA when available.
  */
 export function getGitMetadata(): GitMetadata {
   const result: GitMetadata = {};

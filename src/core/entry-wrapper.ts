@@ -15,11 +15,11 @@ import { parseExportsFromSource } from "./esm-proxy";
 /**
  * Generate wrapper code for an entry point that imports init first.
  *
- * The wrapper imports the init module (which initializes dd-trace) before
- * re-exporting everything from the original entry point.
+ * @param originalPath - Absolute path to the real entry file.
+ * @returns Wrapper module source that re-exports the entry exports.
  */
 export function generateEntryWrapper(originalPath: string): string {
-  // Read the original to detect its exports
+  // Read the original to detect its exports.
   let hasDefault = false;
 
   try {

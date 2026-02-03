@@ -18,6 +18,11 @@ interface ViteConfigOptions {
   require: NodeJS.Require;
 }
 
+/**
+ * Create Vite configuration hooks for dd-trace integration.
+ *
+ * @param options - Runtime options and logger.
+ */
 export function createViteConfig({
   autoInit,
   debug,
@@ -25,6 +30,9 @@ export function createViteConfig({
   require,
 }: ViteConfigOptions): ViteHook {
   return {
+    /**
+     * Configure SSR externals and optional init at dev startup.
+     */
     config(_config, env) {
       if (autoInit && env.command === "serve") {
         initTracer({

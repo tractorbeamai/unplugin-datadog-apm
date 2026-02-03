@@ -20,6 +20,11 @@ interface EsbuildConfigParams {
   setAutoInitHandledByBanner: (handled: boolean) => void;
 }
 
+/**
+ * Create the esbuild configuration hook for dd-trace integration.
+ *
+ * @param params - Hook configuration and callbacks from the plugin.
+ */
 export function createEsbuildConfig({
   autoInit,
   logger,
@@ -27,6 +32,9 @@ export function createEsbuildConfig({
   setAutoInitHandledByBanner,
 }: EsbuildConfigParams): EsbuildConfig {
   return {
+    /**
+     * Apply esbuild config mutations for externals and init banners.
+     */
     config(options) {
       const format = options.format === "esm" ? "esm" : "cjs";
       setOutputFormat(format);

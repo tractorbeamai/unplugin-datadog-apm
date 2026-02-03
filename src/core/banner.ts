@@ -1,8 +1,8 @@
 /**
  * Banner generation for esbuild init code injection.
  *
- * Uses a preamble + shared logic approach to minimize duplication
- * between ESM and CJS formats.
+ * The banner is constructed from a small preamble plus shared init logic
+ * so ESM and CJS stay consistent without duplicating the full snippet.
  *
  * @module
  */
@@ -15,12 +15,13 @@ import { serializeExclusionsToCode } from "./constants";
 
 /**
  * Core init logic shared between ESM and CJS banners.
- * Assumes these variables are defined by the preamble:
- * - __Module: node:module namespace
- * - __baseUrl: URL for Module.register (import.meta.url or pathToFileURL(__filename))
- * - __isMainThread: from worker_threads
- * - __iitmExclusions: array of exclusion patterns
- * - require: available natively (CJS) or via createRequire (ESM)
+ *
+ * The preamble supplies the runtime helpers used here:
+ * - __Module for Module.register
+ * - __baseUrl for the loader hook base URL
+ * - __isMainThread to avoid worker threads
+ * - __iitmExclusions for import-in-the-middle exclusions
+ * - require for dd-trace loading
  */
 const SHARED_INIT_LOGIC = `
 if (__isMainThread) {
@@ -41,7 +42,10 @@ if (__isMainThread) {
 // -----------------------------------------------------------------------------
 
 /**
- * ESM-specific setup that defines the variables needed by SHARED_INIT_LOGIC.
+ * Build the ESM preamble used by the shared init snippet.
+ *
+ * @param includeExclusions - Whether to include loader hook metadata.
+ * @returns Preamble source code for an ESM banner.
  */
 function getESMPreamble(includeExclusions: boolean): string {
   const lines = [
@@ -72,7 +76,9 @@ function getESMPreamble(includeExclusions: boolean): string {
 // -----------------------------------------------------------------------------
 
 /**
- * CJS-specific setup that defines the variables needed by SHARED_INIT_LOGIC.
+ * Build the CJS preamble used by the shared init snippet.
+ *
+ * @returns Preamble source code for a CJS banner.
  */
 function getCJSPreamble(): string {
   return [
@@ -91,12 +97,12 @@ function getCJSPreamble(): string {
 /**
  * Generate the ESM banner for esbuild.
  *
- * @param autoInit - Whether to include dd-trace initialization code
- * @returns The banner code string
+ * @param autoInit - Whether to include dd-trace initialization.
+ * @returns Banner source code to prepend.
  */
 export function generateESMInitBanner(autoInit: boolean): string {
   if (!autoInit) {
-    // Minimal banner: just set up require for CJS compatibility
+    // Minimal banner keeps require available for CJS packages.
     return getESMPreamble(false);
   }
 
@@ -107,7 +113,7 @@ export function generateESMInitBanner(autoInit: boolean): string {
  * Generate the CJS banner for esbuild.
  * Only generated when autoInit is true (CJS doesn't need a banner otherwise).
  *
- * @returns The banner code string
+ * @returns Banner source code to prepend.
  */
 export function generateCJSInitBanner(): string {
   return `${getCJSPreamble()}${SHARED_INIT_LOGIC}`;

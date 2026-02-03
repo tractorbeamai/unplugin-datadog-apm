@@ -19,8 +19,9 @@ export const BUILTINS: Set<string> = new Set<string>(
 /**
  * Resolve a module path from a given directory.
  *
- * Uses exsolve (ESM resolution with caching) with fallback to createRequire (CJS resolution)
- * for legacy packages without proper exports field.
+ * @param modulePath - Import specifier to resolve.
+ * @param resolveDir - Directory used as the resolution base.
+ * @returns Absolute path to the resolved module.
  */
 export function resolveModule(modulePath: string, resolveDir: string): string {
   // Try exsolve first with CJS-preferred conditions (handles exports field, cached)
@@ -47,7 +48,8 @@ export function resolveModule(modulePath: string, resolveDir: string): string {
 /**
  * Extract the base module name from an import specifier.
  *
- * Handles scoped packages (@org/pkg) and subpath imports (pkg/subpath).
+ * @param importee - Import specifier as written by user code.
+ * @returns Base package name for scoped or unscoped imports.
  */
 export function getBaseModuleName(importee: string): string {
   if (importee.startsWith("@")) {

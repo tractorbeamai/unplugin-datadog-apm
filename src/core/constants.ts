@@ -9,8 +9,10 @@
 // -----------------------------------------------------------------------------
 
 /**
- * Packages that don't work well with import-in-the-middle.
- * Used by both the init module and the esbuild banner injection.
+ * Patterns for packages that break under import-in-the-middle.
+ *
+ * Consumers use this list to opt out of ESM loader interception while
+ * keeping tracing enabled for other modules.
  */
 export const IITM_EXCLUSION_PATTERNS: RegExp[] = [
   /langsmith/,
@@ -21,8 +23,9 @@ export const IITM_EXCLUSION_PATTERNS: RegExp[] = [
 ];
 
 /**
- * Serialize exclusion patterns to a JavaScript code string for banner injection.
- * Converts RegExp objects to their string representation (e.g., /pattern/).
+ * Serialize the exclusions into a JS code literal for injection.
+ *
+ * @returns JavaScript array literal of regex source strings.
  */
 export function serializeExclusionsToCode(): string {
   return `[${IITM_EXCLUSION_PATTERNS.map((r) => r.toString()).join(", ")}]`;
@@ -32,22 +35,22 @@ export function serializeExclusionsToCode(): string {
 // Module Identifiers
 // -----------------------------------------------------------------------------
 
-/** Diagnostic channel name for dd-trace bundler integration */
+/** Diagnostic channel name for dd-trace bundler integration. */
 export const CHANNEL = "dd-trace:bundler:load";
 
-/** Suffix for ESM proxy virtual modules */
+/** Suffix for ESM proxy virtual modules. */
 export const ESM_PROXY_SUFFIX = "?__dd_esm_proxy__";
 
-/** Prefix for entry wrapper virtual modules */
+/** Prefix for entry wrapper virtual modules. */
 export const ENTRY_WRAPPER_PREFIX = "\0dd-entry:";
 
-/** The init module specifier */
+/** Module specifier for the init entry point. */
 export const INIT_MODULE = "unplugin-datadog-apm/init";
 
-/** Path segment for detecting node_modules */
+/** Path segment for detecting node_modules. */
 export const NODE_MODULES = "node_modules/";
 
-/** Rollup banner for production builds - imports the init module first */
+/** Rollup banner for production builds; imports init first. */
 export const DD_TRACE_INIT_BANNER = `
 // Auto-injected by unplugin-datadog-apm
 import 'unplugin-datadog-apm/init';
@@ -58,8 +61,10 @@ import 'unplugin-datadog-apm/init';
 // -----------------------------------------------------------------------------
 
 /**
- * Modules that must be external for esbuild (simplified list).
- * esbuild handles regex patterns differently, so we only use strings.
+ * Modules that must stay external in esbuild builds.
+ *
+ * esbuild treats RegExp externals differently from rollup, so this list is
+ * intentionally string-only.
  */
 export const ESBUILD_EXTERNALS = [
   "dd-trace",
@@ -68,8 +73,9 @@ export const ESBUILD_EXTERNALS = [
 ] as const;
 
 /**
- * Modules that must be external for rollup-based bundlers.
- * Includes regex patterns for subpath imports.
+ * Modules that must stay external in rollup-style builds.
+ *
+ * Regex patterns handle subpath imports that should not be bundled.
  */
 export const ROLLUP_EXTERNALS: (string | RegExp)[] = [
   "dd-trace",

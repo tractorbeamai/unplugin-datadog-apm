@@ -7,43 +7,28 @@ import path from "node:path";
 import commonjs from "@rollup/plugin-commonjs";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { rollup } from "rollup";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import rollupPlugin from "../../src/rollup";
-import { createFixture, createTempDir } from "../utils";
+import { createPinoFixture, createUndiciFixture } from "../helpers/fixtures";
+import { useTempDir } from "../helpers/temp-dir";
+import { createFixture } from "../utils";
 
 describe("ESM module proxying", () => {
-  let tempDir: string;
-  let cleanup: () => void;
-
-  beforeEach(() => {
-    const temp = createTempDir();
-    tempDir = temp.tempDir;
-    cleanup = temp.cleanup;
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
+  const temp = useTempDir();
 
   describe("basic proxying", () => {
     it("creates ESM proxy for ESM modules", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -56,7 +41,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles .mjs files as ESM", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { something } from 'esm-pkg'; export { something };`,
         "node_modules/esm-pkg/package.json": JSON.stringify({
           name: "esm-pkg",
@@ -70,10 +55,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-pkg"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -85,32 +70,21 @@ describe("ESM module proxying", () => {
     });
 
     it("handles mixed CJS and ESM modules in same bundle", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { fetch } from 'undici';
           import pino from 'pino';
           export { fetch, pino };
         `,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const fetch = () => {};`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createUndiciFixture(),
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill", "import-in-the-middle/lib/register.js"],
@@ -129,7 +103,7 @@ describe("ESM module proxying", () => {
 
   describe("export parsing", () => {
     it("handles named exports in ESM proxy", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { a, b, c } from 'esm-exports'; export { a, b, c };`,
         "node_modules/esm-exports/package.json": JSON.stringify({
           name: "esm-exports",
@@ -145,10 +119,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-exports"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -160,7 +134,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles default export in ESM proxy", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import def from 'esm-default'; export default def;`,
         "node_modules/esm-default/package.json": JSON.stringify({
           name: "esm-default",
@@ -172,10 +146,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-default"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -188,7 +162,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles re-exports (export * from)", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `export * from 'esm-reexport';`,
         "node_modules/esm-reexport/package.json": JSON.stringify({
           name: "esm-reexport",
@@ -204,10 +178,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-reexport"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -221,7 +195,7 @@ describe("ESM module proxying", () => {
 
   describe("export declaration types", () => {
     it("handles export let declarations", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { counter } from 'esm-let'; export { counter };`,
         "node_modules/esm-let/package.json": JSON.stringify({
           name: "esm-let",
@@ -233,10 +207,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-let"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -249,7 +223,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles export var declarations", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { legacy } from 'esm-var'; export { legacy };`,
         "node_modules/esm-var/package.json": JSON.stringify({
           name: "esm-var",
@@ -261,10 +235,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-var"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -276,7 +250,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles generator function exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { gen } from 'esm-generator'; export { gen };`,
         "node_modules/esm-generator/package.json": JSON.stringify({
           name: "esm-generator",
@@ -288,10 +262,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-generator"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -303,7 +277,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles async generator exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { asyncGen } from 'esm-async-gen'; export { asyncGen };`,
         "node_modules/esm-async-gen/package.json": JSON.stringify({
           name: "esm-async-gen",
@@ -315,10 +289,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-async-gen"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -330,7 +304,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles class exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { MyClass } from 'esm-class'; export { MyClass };`,
         "node_modules/esm-class/package.json": JSON.stringify({
           name: "esm-class",
@@ -342,10 +316,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-class"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -357,7 +331,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles async function exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { fetchData } from 'esm-async'; export { fetchData };`,
         "node_modules/esm-async/package.json": JSON.stringify({
           name: "esm-async",
@@ -369,10 +343,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-async"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -386,7 +360,7 @@ describe("ESM module proxying", () => {
 
   describe("aliased exports", () => {
     it("handles aliased exports: export { foo as bar }", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { bar } from 'esm-alias'; export { bar };`,
         "node_modules/esm-alias/package.json": JSON.stringify({
           name: "esm-alias",
@@ -401,10 +375,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-alias"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -417,7 +391,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles mixed aliased exports: export { a, b as c, d }", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { a, c, d } from 'esm-mixed-alias'; export { a, c, d };`,
         "node_modules/esm-mixed-alias/package.json": JSON.stringify({
           name: "esm-mixed-alias",
@@ -434,13 +408,13 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({
             debug: false,
             additionalModules: ["esm-mixed-alias"],
           }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -452,7 +426,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles export from with renaming", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `export { renamed } from 'esm-rename';`,
         "node_modules/esm-rename/package.json": JSON.stringify({
           name: "esm-rename",
@@ -467,10 +441,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-rename"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -485,7 +459,7 @@ describe("ESM module proxying", () => {
 
   describe("complex exports", () => {
     it("handles multiple export types in same module", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { MyClass, gen, counter, fetchData, aliased } from 'esm-complex';
           export { MyClass, gen, counter, fetchData, aliased };
@@ -507,10 +481,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-complex"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -522,7 +496,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles export with computed property names", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import def from 'esm-computed'; export default def;`,
         "node_modules/esm-computed/package.json": JSON.stringify({
           name: "esm-computed",
@@ -537,10 +511,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-computed"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -554,7 +528,7 @@ describe("ESM module proxying", () => {
 
   describe("destructuring exports", () => {
     it("handles object destructuring exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { a, b } from 'esm-destructure'; export { a, b };`,
         "node_modules/esm-destructure/package.json": JSON.stringify({
           name: "esm-destructure",
@@ -569,13 +543,13 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({
             debug: false,
             additionalModules: ["esm-destructure"],
           }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -588,7 +562,7 @@ describe("ESM module proxying", () => {
     });
 
     it("handles array destructuring exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { first, second } from 'esm-array'; export { first, second };`,
         "node_modules/esm-array/package.json": JSON.stringify({
           name: "esm-array",
@@ -603,10 +577,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-array"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -620,7 +594,7 @@ describe("ESM module proxying", () => {
 
   describe("known limitations", () => {
     it("does NOT instrument dynamic imports (expected limitation)", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           export async function loadPino() {
             const pino = await import('pino');
@@ -637,10 +611,10 @@ describe("ESM module proxying", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js", "pino"],
       });

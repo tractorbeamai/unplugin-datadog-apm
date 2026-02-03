@@ -13,10 +13,21 @@ import { CHANNEL } from "./constants";
 
 type AssignmentExpressionNode = Node & { left: Node; operator: string };
 
+/**
+ * Capture module.exports assignments by injecting a capture variable.
+ *
+ * Uses AST rewriting when parsing succeeds and falls back to simple
+ * string replacements when the script cannot be parsed.
+ *
+ * @param code - Original CommonJS source.
+ * @param captureVar - Variable name that should receive module.exports.
+ * @returns Updated source that assigns module.exports into captureVar.
+ */
 function interceptModuleExportsAssignments(
   code: string,
   captureVar: string,
 ): string {
+  // Prefer AST rewriting so we only touch real assignments, not strings.
   let ast: Node & { body: Node[] };
   try {
     ast = parse(code, {
@@ -24,6 +35,7 @@ function interceptModuleExportsAssignments(
       sourceType: "script",
     }) as Node & { body: Node[] };
   } catch {
+    // Fallback keeps us resilient when parsing fails (e.g. stage-3 syntax).
     return code
       .replaceAll(/module\.exports\s*=/g, `${captureVar} = module.exports =`)
       .replaceAll(
@@ -45,6 +57,7 @@ function interceptModuleExportsAssignments(
       const assignment = node as AssignmentExpressionNode;
       if (assignment.operator !== "=") return;
       if (!isModuleExportsMemberExpression(assignment.left)) return;
+      // Inject captureVar = before the assignment target.
       s.prependLeft(assignment.left.start, `${captureVar} = `);
     },
   });
@@ -55,22 +68,22 @@ function interceptModuleExportsAssignments(
  * Wrap a CommonJS module for CJS output format.
  *
  * Captures module.exports inline so the value is available even after
- * bundlers transform the code (e.g., rollup's commonjs plugin).
+ * bundlers transform the code (for example via commonjs transforms).
  *
- * Pattern:
- * 1. Declare __dd_mod__ to capture exports
- * 2. Intercept module.exports assignments
- * 3. Publish to diagnostic channel with captured value
+ * @param originalCode - Original CommonJS source.
+ * @param moduleInfo - Package metadata for the diagnostic payload.
+ * @returns Wrapped source with diagnostic channel publishing.
  */
 export function wrapCommonJSModule(
   originalCode: string,
   moduleInfo: { pkg: string; path: string; version: string },
 ): string {
+  // Build a stable "pkg/path" label for diagnostics.
   const pkgPath = moduleInfo.path
     ? `${moduleInfo.pkg}/${moduleInfo.path}`
     : moduleInfo.pkg;
 
-  // Intercept module.exports assignments to capture the value
+  // Capture module.exports so we can publish the final value.
   const intercepted = interceptModuleExportsAssignments(
     originalCode,
     "__dd_mod__",
@@ -79,6 +92,7 @@ export function wrapCommonJSModule(
   return `var __dd_mod__;
 ${intercepted}
 ;(function() {
+  // dc-polyfill exposes the diagnostic channel used by dd-trace.
   var dc = require('dc-polyfill');
   var ch = dc.channel('${CHANNEL}');
   var mod = typeof __dd_mod__ !== 'undefined' ? __dd_mod__ : (typeof module !== 'undefined' ? module.exports : undefined);
@@ -89,6 +103,7 @@ ${intercepted}
       package: '${moduleInfo.pkg}',
       path: '${pkgPath}'
     };
+    // Publish the payload so dd-trace can observe module exports.
     ch.publish(payload);
     if (typeof module !== 'undefined') module.exports = payload.module;
   }
@@ -99,13 +114,18 @@ ${intercepted}
 /**
  * Wrap a CommonJS module for ESM output format.
  *
- * Uses import statement at the top which bundlers convert appropriately.
- * Also captures exports in a way that works after CJS-to-ESM conversion.
+ * Uses an ESM import for dc-polyfill so bundlers can rewrite it, and
+ * captures exports after CJS-to-ESM conversion happens.
+ *
+ * @param originalCode - Original CommonJS source.
+ * @param moduleInfo - Package metadata for the diagnostic payload.
+ * @returns Wrapped source with diagnostic channel publishing.
  */
 export function wrapCommonJSModuleForESM(
   originalCode: string,
   moduleInfo: { pkg: string; path: string; version: string },
 ): string {
+  // Build a stable "pkg/path" label for diagnostics.
   const pkgPath = moduleInfo.path
     ? `${moduleInfo.pkg}/${moduleInfo.path}`
     : moduleInfo.pkg;
@@ -126,6 +146,7 @@ ${interceptModuleExportsAssignments(originalCode, "__dd_exports")}
       package: '${moduleInfo.pkg}',
       path: '${pkgPath}'
     };
+    // Publish without reassigning module.exports in ESM output.
     ch.publish(payload);
   }
 })();

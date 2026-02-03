@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import rollupPlugin from "../../src/rollup";
 import { expectInstrumented } from "../helpers/assertions";
+import { createPinoFixture, createUndiciFixture } from "../helpers/fixtures";
 import { useTempDir } from "../helpers/temp-dir";
 import { createFixture } from "../utils";
 
@@ -27,12 +28,7 @@ describe("rollup bundler", () => {
     it("works with CJS format", async () => {
       createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
@@ -54,13 +50,7 @@ describe("rollup bundler", () => {
     it("works with ESM format", async () => {
       createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       const bundle = await rollup({
@@ -81,12 +71,7 @@ describe("rollup bundler", () => {
     it("works with IIFE format", async () => {
       createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
@@ -112,12 +97,7 @@ describe("rollup bundler", () => {
     it("works with UMD format", async () => {
       createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
@@ -140,12 +120,7 @@ describe("rollup bundler", () => {
     it("works with AMD format", async () => {
       createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
@@ -168,12 +143,7 @@ describe("rollup bundler", () => {
     it("generates source maps when requested", async () => {
       createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({

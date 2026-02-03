@@ -14,6 +14,13 @@ import {
   expectInstrumented,
   expectNotInstrumented,
 } from "../helpers/assertions";
+import {
+  combineFixtures,
+  createCustomCjsFixture,
+  createIoredisFixture,
+  createPinoFixture,
+  createUndiciFixture,
+} from "../helpers/fixtures";
 import { useTempDir } from "../helpers/temp-dir";
 import { createFixture } from "../utils";
 
@@ -58,12 +65,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
     it("wraps CJS modules for instrumentation", async () => {
       createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       await runWebpack({
@@ -99,12 +101,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
     it("respects excludeModules option", async () => {
       createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       await runWebpack({
@@ -138,12 +135,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
     it("respects additionalModules option", async () => {
       createFixture(temp.dir, {
         "index.js": `const custom = require('custom-pkg'); module.exports = custom;`,
-        "node_modules/custom-pkg/package.json": JSON.stringify({
-          name: "custom-pkg",
-          version: "1.0.0",
-          main: "index.js",
-        }),
-        "node_modules/custom-pkg/index.js": `module.exports = { hello: "world" };`,
+        ...createCustomCjsFixture("custom-pkg"),
       });
 
       await runWebpack({
@@ -185,12 +177,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
           const customExternal = require('custom-external');
           module.exports = { pino, customExternal };
         `,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       // Track which modules the externals function was called for
@@ -250,13 +237,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
     it.skip("creates ESM proxy for ESM modules", async () => {
       createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       await runWebpack({
@@ -295,13 +276,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
     it("respects excludeModules option", async () => {
       createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       await runWebpack({
@@ -341,12 +316,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
     it("wraps CJS modules in ESM output", async () => {
       createFixture(temp.dir, {
         "index.js": `import pino from 'pino'; export default pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       await runWebpack({
@@ -392,18 +362,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
           const ioredis = require('ioredis');
           module.exports = { pino, ioredis };
         `,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
-        "node_modules/ioredis/package.json": JSON.stringify({
-          name: "ioredis",
-          version: "5.0.0",
-          main: "index.js",
-        }),
-        "node_modules/ioredis/index.js": `module.exports = function Redis() {};`,
+        ...combineFixtures(createPinoFixture(), createIoredisFixture()),
       });
 
       await runWebpack({

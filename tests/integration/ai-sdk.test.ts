@@ -14,30 +14,20 @@ import path from "node:path";
 import commonjs from "@rollup/plugin-commonjs";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { rollup } from "rollup";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import rollupPlugin from "../../src/rollup";
-import { createFixture, createTempDir } from "../utils";
+import { useTempDir } from "../helpers/temp-dir";
+import { createFixture } from "../utils";
 
 const require = createRequire(import.meta.url);
 
 describe("AI SDK instrumentation", () => {
-  let tempDir: string;
-  let cleanup: () => void;
-
-  beforeEach(() => {
-    const temp = createTempDir();
-    tempDir = temp.tempDir;
-    cleanup = temp.cleanup;
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
+  const temp = useTempDir();
 
   describe("Vercel AI SDK (ai package)", () => {
     it("instruments ESM ai package with generateText", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { generateText } from 'ai';
           export { generateText };
@@ -65,10 +55,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -81,7 +71,7 @@ describe("AI SDK instrumentation", () => {
     });
 
     it("instruments ai package with multiple exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { generateText, streamText, tool } from 'ai';
           export { generateText, streamText, tool };
@@ -107,10 +97,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -123,7 +113,7 @@ describe("AI SDK instrumentation", () => {
     });
 
     it("instruments ai package subpath exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { OpenAIStream } from 'ai/streams';
           export { OpenAIStream };
@@ -151,10 +141,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -168,7 +158,7 @@ describe("AI SDK instrumentation", () => {
 
   describe("OpenAI SDK", () => {
     it("instruments CJS openai package", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           const OpenAI = require('openai');
           module.exports = { OpenAI };
@@ -195,10 +185,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -214,7 +204,7 @@ describe("AI SDK instrumentation", () => {
     });
 
     it("instruments ESM openai package", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import OpenAI from 'openai';
           export { OpenAI };
@@ -236,10 +226,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -254,7 +244,7 @@ describe("AI SDK instrumentation", () => {
 
   describe("Anthropic SDK", () => {
     it("instruments @anthropic-ai/sdk package", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import Anthropic from '@anthropic-ai/sdk';
           export { Anthropic };
@@ -280,10 +270,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -298,7 +288,7 @@ describe("AI SDK instrumentation", () => {
 
   describe("LangChain", () => {
     it("instruments @langchain/core package", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { ChatPromptTemplate } from '@langchain/core/prompts';
           export { ChatPromptTemplate };
@@ -332,10 +322,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -347,7 +337,7 @@ describe("AI SDK instrumentation", () => {
     });
 
     it("instruments langchain package", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { ChatOpenAI } from 'langchain/chat_models/openai';
           export { ChatOpenAI };
@@ -373,10 +363,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -390,7 +380,7 @@ describe("AI SDK instrumentation", () => {
 
   describe("Google AI SDKs", () => {
     it("instruments @google/genai package", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { GoogleGenAI } from '@google/genai';
           export { GoogleGenAI };
@@ -414,10 +404,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -429,7 +419,7 @@ describe("AI SDK instrumentation", () => {
     });
 
     it("instruments @google-cloud/vertexai package", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { VertexAI } from '@google-cloud/vertexai';
           export { VertexAI };
@@ -454,10 +444,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -471,7 +461,7 @@ describe("AI SDK instrumentation", () => {
 
   describe("mixed AI SDK usage", () => {
     it("instruments multiple AI SDKs in same bundle", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { generateText } from 'ai';
           import OpenAI from 'openai';
@@ -498,10 +488,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -515,7 +505,7 @@ describe("AI SDK instrumentation", () => {
     });
 
     it("instruments CJS and ESM AI SDKs together", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { generateText } from 'ai';
           import pino from 'pino';
@@ -541,10 +531,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill", "import-in-the-middle/lib/register.js"],
@@ -564,7 +554,7 @@ describe("AI SDK instrumentation", () => {
   describe("tool loop agent pattern", () => {
     it("instruments generateText with tool function for agentic workflows", async () => {
       // This tests the maxSteps + tools pattern used in AI agents
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { generateText, tool } from 'ai';
           import { z } from 'zod';
@@ -638,10 +628,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -656,7 +646,7 @@ describe("AI SDK instrumentation", () => {
 
     it("instruments all AI SDK functions needed for tool loops", async () => {
       // Verifies generateText, streamText, tool are all instrumented
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { generateText, streamText, tool, generateObject, streamObject, embed, embedMany } from 'ai';
           export { generateText, streamText, tool, generateObject, streamObject, embed, embedMany };
@@ -679,10 +669,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -695,7 +685,7 @@ describe("AI SDK instrumentation", () => {
 
     it("instruments experimental_createMCPClient for MCP tool servers", async () => {
       // MCP (Model Context Protocol) for external tool servers
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { generateText, experimental_createMCPClient } from 'ai';
           export { generateText, experimental_createMCPClient };
@@ -718,10 +708,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -811,7 +801,7 @@ describe("AI SDK instrumentation", () => {
     it("instruments tool calls with Datadog channel (not Vercel telemetry)", async () => {
       // This verifies the tool function is wrapped to publish to dd-trace channels
       // rather than using Vercel's experimental_telemetry directly
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `
           import { tool } from 'ai';
           import { z } from 'zod';
@@ -853,10 +843,10 @@ describe("AI SDK instrumentation", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });

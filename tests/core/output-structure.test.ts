@@ -3,42 +3,33 @@ import path from "node:path";
 import commonjs from "@rollup/plugin-commonjs";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { rollup } from "rollup";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import rollupPlugin from "../../src/rollup";
-import { createFixture, createTempDir } from "../utils";
+import {
+  createCustomEsmFixture,
+  createLodashFixture,
+  createPinoFixture,
+  createUndiciFixture,
+} from "../helpers/fixtures";
+import { useTempDir } from "../helpers/temp-dir";
+import { createFixture } from "../utils";
 
 describe("output structure verification", () => {
-  let tempDir: string;
-  let cleanup: () => void;
-
-  beforeEach(() => {
-    const temp = createTempDir();
-    tempDir = temp.tempDir;
-    cleanup = temp.cleanup;
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
+  const temp = useTempDir();
 
   describe("CJS wrapper structure", () => {
     it("wraps original code in IIFE with arguments spread", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -53,21 +44,16 @@ describe("output structure verification", () => {
     });
 
     it("requires dc-polyfill for diagnostics channel", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -80,21 +66,16 @@ describe("output structure verification", () => {
     });
 
     it("uses correct channel name dd-trace:bundler:load", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -107,21 +88,16 @@ describe("output structure verification", () => {
     });
 
     it("includes all required payload fields", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -139,20 +115,16 @@ describe("output structure verification", () => {
     });
 
     it("includes correct path for submodule imports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const get = require('lodash/get'); module.exports = get;`,
-        "node_modules/lodash/package.json": JSON.stringify({
-          name: "lodash",
-          version: "4.17.21",
-        }),
-        "node_modules/lodash/get.js": `module.exports = function get() {};`,
+        ...createLodashFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -166,21 +138,16 @@ describe("output structure verification", () => {
     });
 
     it("publishes to channel and reassigns module.exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `const pino = require('pino'); module.exports = pino;`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
         external: ["dc-polyfill"],
@@ -196,22 +163,16 @@ describe("output structure verification", () => {
 
   describe("ESM proxy structure", () => {
     it("imports register from import-in-the-middle", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -225,22 +186,16 @@ describe("output structure verification", () => {
     });
 
     it("inlines and wraps the original module exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -255,22 +210,16 @@ describe("output structure verification", () => {
     });
 
     it("creates Module object with Symbol.toStringTag", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -283,22 +232,16 @@ describe("output structure verification", () => {
     });
 
     it("creates setter and getter objects", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -311,22 +254,20 @@ describe("output structure verification", () => {
     });
 
     it("generates setter functions for exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { myExport } from 'esm-pkg'; export { myExport };`,
-        "node_modules/esm-pkg/package.json": JSON.stringify({
-          name: "esm-pkg",
-          version: "1.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/esm-pkg/index.js": `export const myExport = 42;`,
+        ...createCustomEsmFixture(
+          "esm-pkg",
+          "1.0.0",
+          `export const myExport = 42;`,
+        ),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-pkg"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -340,22 +281,20 @@ describe("output structure verification", () => {
     });
 
     it("generates getter functions for exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { myExport } from 'esm-pkg'; export { myExport };`,
-        "node_modules/esm-pkg/package.json": JSON.stringify({
-          name: "esm-pkg",
-          version: "1.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/esm-pkg/index.js": `export const myExport = 42;`,
+        ...createCustomEsmFixture(
+          "esm-pkg",
+          "1.0.0",
+          `export const myExport = 42;`,
+        ),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-pkg"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -368,22 +307,16 @@ describe("output structure verification", () => {
     });
 
     it("calls register with module URL and raw import path", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `import { something } from 'undici'; export { something };`,
-        "node_modules/undici/package.json": JSON.stringify({
-          name: "undici",
-          version: "6.0.0",
-          type: "module",
-          main: "index.js",
-        }),
-        "node_modules/undici/index.js": `export const something = () => {};`,
+        ...createUndiciFixture(),
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });
@@ -397,7 +330,7 @@ describe("output structure verification", () => {
     });
 
     it("handles modules with star re-exports", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.js": `export * from 'esm-reexport';`,
         "node_modules/esm-reexport/package.json": JSON.stringify({
           name: "esm-reexport",
@@ -413,10 +346,10 @@ describe("output structure verification", () => {
       });
 
       const bundle = await rollup({
-        input: path.join(tempDir, "index.js"),
+        input: path.join(temp.dir, "index.js"),
         plugins: [
           rollupPlugin({ debug: false, additionalModules: ["esm-reexport"] }),
-          nodeResolve({ rootDir: tempDir }),
+          nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
       });

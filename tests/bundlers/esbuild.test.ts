@@ -6,46 +6,37 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import * as esbuild from "esbuild";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import esbuildPlugin from "../../src/esbuild";
 import {
   expectInstrumented,
   expectNotInstrumented,
 } from "../helpers/assertions";
-import { createFixture, createTempDir } from "../utils";
+import { createCustomCjsFixture, createPinoFixture } from "../helpers/fixtures";
+import { useTempDir } from "../helpers/temp-dir";
+import { createFixture } from "../utils";
 
 describe("unplugin-datadog-apm (esbuild)", () => {
-  let tempDir: string;
-  let cleanup: () => void;
-
-  beforeEach(() => {
-    const temp = createTempDir();
-    tempDir = temp.tempDir;
-    cleanup = temp.cleanup;
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
+  const temp = useTempDir();
 
   describe("ESM builds", () => {
     it("injects init banner with createRequire", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `console.log("hello");`,
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(tempDir, "dist/bundle.mjs"),
+        outfile: path.join(temp.dir, "dist/bundle.mjs"),
         plugins: [esbuildPlugin()],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.mjs"),
+        path.join(temp.dir, "dist/bundle.mjs"),
         "utf8",
       );
 
@@ -60,21 +51,21 @@ describe("unplugin-datadog-apm (esbuild)", () => {
     });
 
     it("injects ESM loader hook registration", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `console.log("hello");`,
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(tempDir, "dist/bundle.mjs"),
+        outfile: path.join(temp.dir, "dist/bundle.mjs"),
         plugins: [esbuildPlugin()],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.mjs"),
+        path.join(temp.dir, "dist/bundle.mjs"),
         "utf8",
       );
 
@@ -84,29 +75,24 @@ describe("unplugin-datadog-apm (esbuild)", () => {
     });
 
     it("wraps CJS modules for instrumentation", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `import pino from 'pino'; console.log(pino);`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(tempDir, "dist/bundle.mjs"),
+        outfile: path.join(temp.dir, "dist/bundle.mjs"),
         plugins: [esbuildPlugin()],
         // dc-polyfill is external since it's not in the test fixture
         external: ["dc-polyfill"],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.mjs"),
+        path.join(temp.dir, "dist/bundle.mjs"),
         "utf8",
       );
 
@@ -116,21 +102,21 @@ describe("unplugin-datadog-apm (esbuild)", () => {
     });
 
     it("skips init banner when autoInit is false", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `console.log("hello");`,
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(tempDir, "dist/bundle.mjs"),
+        outfile: path.join(temp.dir, "dist/bundle.mjs"),
         plugins: [esbuildPlugin({ autoInit: false })],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.mjs"),
+        path.join(temp.dir, "dist/bundle.mjs"),
         "utf8",
       );
 
@@ -145,21 +131,21 @@ describe("unplugin-datadog-apm (esbuild)", () => {
 
   describe("CJS builds", () => {
     it("injects init banner", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `console.log("hello");`,
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "cjs",
-        outfile: path.join(tempDir, "dist/bundle.cjs"),
+        outfile: path.join(temp.dir, "dist/bundle.cjs"),
         plugins: [esbuildPlugin()],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.cjs"),
+        path.join(temp.dir, "dist/bundle.cjs"),
         "utf8",
       );
 
@@ -170,21 +156,21 @@ describe("unplugin-datadog-apm (esbuild)", () => {
     });
 
     it("injects ESM loader hook registration for CJS", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `console.log("hello");`,
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "cjs",
-        outfile: path.join(tempDir, "dist/bundle.cjs"),
+        outfile: path.join(temp.dir, "dist/bundle.cjs"),
         plugins: [esbuildPlugin()],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.cjs"),
+        path.join(temp.dir, "dist/bundle.cjs"),
         "utf8",
       );
 
@@ -195,29 +181,24 @@ describe("unplugin-datadog-apm (esbuild)", () => {
     });
 
     it("wraps CJS modules for instrumentation", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `const pino = require('pino'); console.log(pino);`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "cjs",
-        outfile: path.join(tempDir, "dist/bundle.cjs"),
+        outfile: path.join(temp.dir, "dist/bundle.cjs"),
         plugins: [esbuildPlugin()],
         // dc-polyfill is external since it's not in the test fixture
         external: ["dc-polyfill"],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.cjs"),
+        path.join(temp.dir, "dist/bundle.cjs"),
         "utf8",
       );
 
@@ -226,21 +207,21 @@ describe("unplugin-datadog-apm (esbuild)", () => {
     });
 
     it("skips init banner when autoInit is false", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `console.log("hello");`,
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "cjs",
-        outfile: path.join(tempDir, "dist/bundle.cjs"),
+        outfile: path.join(temp.dir, "dist/bundle.cjs"),
         plugins: [esbuildPlugin({ autoInit: false })],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.cjs"),
+        path.join(temp.dir, "dist/bundle.cjs"),
         "utf8",
       );
 
@@ -252,21 +233,21 @@ describe("unplugin-datadog-apm (esbuild)", () => {
 
   describe("auto-externalization", () => {
     it("auto-externalizes dd-trace", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `import tracer from 'dd-trace'; console.log(tracer);`,
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(tempDir, "dist/bundle.mjs"),
+        outfile: path.join(temp.dir, "dist/bundle.mjs"),
         plugins: [esbuildPlugin()],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.mjs"),
+        path.join(temp.dir, "dist/bundle.mjs"),
         "utf8",
       );
 
@@ -275,21 +256,21 @@ describe("unplugin-datadog-apm (esbuild)", () => {
     });
 
     it("auto-externalizes @opentelemetry/api", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `import { trace } from '@opentelemetry/api'; console.log(trace);`,
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(tempDir, "dist/bundle.mjs"),
+        outfile: path.join(temp.dir, "dist/bundle.mjs"),
         plugins: [esbuildPlugin()],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.mjs"),
+        path.join(temp.dir, "dist/bundle.mjs"),
         "utf8",
       );
 
@@ -300,22 +281,22 @@ describe("unplugin-datadog-apm (esbuild)", () => {
     });
 
     it("preserves user-specified externals", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `import express from 'express'; console.log(express);`,
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(tempDir, "dist/bundle.mjs"),
+        outfile: path.join(temp.dir, "dist/bundle.mjs"),
         plugins: [esbuildPlugin()],
         external: ["express"],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.mjs"),
+        path.join(temp.dir, "dist/bundle.mjs"),
         "utf8",
       );
 
@@ -326,27 +307,22 @@ describe("unplugin-datadog-apm (esbuild)", () => {
 
   describe("module filtering", () => {
     it("respects excludeModules option", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `const pino = require('pino'); console.log(pino);`,
-        "node_modules/pino/package.json": JSON.stringify({
-          name: "pino",
-          version: "8.0.0",
-          main: "index.js",
-        }),
-        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        ...createPinoFixture(),
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "cjs",
-        outfile: path.join(tempDir, "dist/bundle.cjs"),
+        outfile: path.join(temp.dir, "dist/bundle.cjs"),
         plugins: [esbuildPlugin({ excludeModules: ["pino"] })],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.cjs"),
+        path.join(temp.dir, "dist/bundle.cjs"),
         "utf8",
       );
 
@@ -355,29 +331,24 @@ describe("unplugin-datadog-apm (esbuild)", () => {
     });
 
     it("respects additionalModules option", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `const custom = require('custom-pkg'); console.log(custom);`,
-        "node_modules/custom-pkg/package.json": JSON.stringify({
-          name: "custom-pkg",
-          version: "1.0.0",
-          main: "index.js",
-        }),
-        "node_modules/custom-pkg/index.js": `module.exports = { hello: "world" };`,
+        ...createCustomCjsFixture("custom-pkg"),
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "cjs",
-        outfile: path.join(tempDir, "dist/bundle.cjs"),
+        outfile: path.join(temp.dir, "dist/bundle.cjs"),
         plugins: [esbuildPlugin({ additionalModules: ["custom-pkg"] })],
         // dc-polyfill is external since it's not in the test fixture
         external: ["dc-polyfill"],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.cjs"),
+        path.join(temp.dir, "dist/bundle.cjs"),
         "utf8",
       );
 
@@ -389,21 +360,21 @@ describe("unplugin-datadog-apm (esbuild)", () => {
 
   describe("IITM exclusions", () => {
     it("includes IITM exclusions in init banner", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "index.ts": `console.log("hello");`,
       });
 
       await esbuild.build({
-        entryPoints: [path.join(tempDir, "index.ts")],
+        entryPoints: [path.join(temp.dir, "index.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(tempDir, "dist/bundle.mjs"),
+        outfile: path.join(temp.dir, "dist/bundle.mjs"),
         plugins: [esbuildPlugin()],
       });
 
       const output = readFileSync(
-        path.join(tempDir, "dist/bundle.mjs"),
+        path.join(temp.dir, "dist/bundle.mjs"),
         "utf8",
       );
 
@@ -416,29 +387,29 @@ describe("unplugin-datadog-apm (esbuild)", () => {
 
   describe("multiple entry points", () => {
     it("adds banner to all entry points", async () => {
-      createFixture(tempDir, {
+      createFixture(temp.dir, {
         "entry1.ts": `console.log("entry1");`,
         "entry2.ts": `console.log("entry2");`,
       });
 
       await esbuild.build({
         entryPoints: [
-          path.join(tempDir, "entry1.ts"),
-          path.join(tempDir, "entry2.ts"),
+          path.join(temp.dir, "entry1.ts"),
+          path.join(temp.dir, "entry2.ts"),
         ],
         bundle: true,
         platform: "node",
         format: "esm",
-        outdir: path.join(tempDir, "dist"),
+        outdir: path.join(temp.dir, "dist"),
         plugins: [esbuildPlugin()],
       });
 
       const output1 = readFileSync(
-        path.join(tempDir, "dist/entry1.js"),
+        path.join(temp.dir, "dist/entry1.js"),
         "utf8",
       );
       const output2 = readFileSync(
-        path.join(tempDir, "dist/entry2.js"),
+        path.join(temp.dir, "dist/entry2.js"),
         "utf8",
       );
 

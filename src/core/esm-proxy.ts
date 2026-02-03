@@ -13,7 +13,9 @@ import { parse, type Node } from "acorn";
 
 /**
  * Extract names from a binding pattern (handles destructuring).
- * Supports Identifier, ObjectPattern, ArrayPattern, RestElement, and AssignmentPattern.
+ *
+ * @param pattern - AST node for the binding pattern.
+ * @param names - Accumulator for discovered names.
  */
 function extractPatternNames(pattern: Node, names: string[]): void {
   switch (pattern.type) {
@@ -58,7 +60,9 @@ function extractPatternNames(pattern: Node, names: string[]): void {
 
 /**
  * Extract declared names from export declarations.
- * Handles VariableDeclaration, FunctionDeclaration, and ClassDeclaration.
+ *
+ * @param decl - AST node for the export declaration.
+ * @param names - Accumulator for discovered names.
  */
 function extractDeclaredNames(decl: Node, names: string[]): void {
   switch (decl.type) {
@@ -81,8 +85,10 @@ function extractDeclaredNames(decl: Node, names: string[]): void {
 }
 
 /**
- * Parse a module to extract its export names using AST parsing.
- * Uses Acorn to properly handle all export patterns including destructuring.
+ * Parse a module and return the export names it declares.
+ *
+ * @param code - Module source code.
+ * @returns Export names plus any `* from` re-export markers.
  */
 export function parseExportsFromSource(code: string): string[] {
   const exports: string[] = [];
@@ -139,7 +145,13 @@ export function parseExportsFromSource(code: string): string[] {
 }
 
 /**
- * Generate ESM proxy module code that registers with import-in-the-middle.
+ * Generate ESM proxy code that registers with import-in-the-middle.
+ *
+ * @param originalPath - Absolute path to the target module.
+ * @param rawImportPath - Import specifier as written by the importer.
+ * @param exportNames - List of export names to proxy.
+ * @param isBuiltin - Whether the module is a Node.js builtin.
+ * @returns Proxy module source code.
  */
 export function generateESMProxy(
   originalPath: string,
@@ -147,20 +159,24 @@ export function generateESMProxy(
   exportNames: string[],
   isBuiltin: boolean,
 ): string {
+  // Builtins are referenced by specifier, not by file URL.
   const moduleUrl = isBuiltin
     ? rawImportPath
     : pathToFileURL(originalPath).href;
   const importPath = isBuiltin ? rawImportPath : originalPath;
 
-  // Filter out star exports for the setter generation
+  // Split explicit exports from "export *" re-exports so we can
+  // treat them differently in the proxy.
   const namedExports = exportNames.filter((n) => !n.startsWith("* from "));
   const starExports = exportNames
     .filter((n) => n.startsWith("* from "))
     .map((n) => n.slice(7)); // Remove "* from " prefix
 
-  // Generate setter code for each export
+  // Generate setter/getter wiring so import-in-the-middle can
+  // track updates.
   const setterCode = namedExports
     .map((name) => {
+      // Convert export names into safe identifiers for local bindings.
       const safeName = `$${name.replaceAll(/[^\w$]/g, "_")}`;
       const key = JSON.stringify(name);
       const exportAs = name === "default" ? "default" : key;
@@ -168,17 +184,20 @@ export function generateESMProxy(
       return `
 let ${safeName};
 try {
+  // Snapshot the original export value into the proxy container.
   ${safeName} = _[${key}] = namespace[${key}];
 } catch (err) {
   if (!(err instanceof ReferenceError)) throw err;
 }
 export { ${safeName} as ${exportAs} };
+// Hook into import-in-the-middle's live bindings.
 set[${key}] = (v) => { ${safeName} = v; return true; };
 get[${key}] = () => ${safeName};`;
     })
     .join("\n");
 
-  // Generate star export re-exports
+  // Re-export star exports verbatim so module consumers see them
+  // as expected.
   const starExportCode = starExports
     .map((mod) => `export * from ${JSON.stringify(mod)};`)
     .join("\n");
@@ -187,6 +206,8 @@ get[${key}] = () => ${safeName};`;
 import { register } from 'import-in-the-middle/lib/register.js';
 import * as namespace from ${JSON.stringify(importPath)};
 
+  // _ is the proxy module object that import-in-the-middle will
+  // wrap.
 const _ = Object.create(null, { [Symbol.toStringTag]: { value: 'Module' } });
 const set = {};
 const get = {};

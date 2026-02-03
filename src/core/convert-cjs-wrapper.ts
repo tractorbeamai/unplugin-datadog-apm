@@ -1,5 +1,8 @@
 /**
  * Convert CJS wrapper code to ESM-compatible dynamic imports.
+ *
+ * The conversion keeps the wrapper behavior while turning dc-polyfill
+ * into a dynamic import that works in ESM output.
  */
 import { parse, type Node } from "acorn";
 import { walk } from "estree-walker";
@@ -34,6 +37,12 @@ function isPayloadModuleMemberExpression(node: Node): boolean {
   );
 }
 
+/**
+ * Check for require('specifier') call expressions.
+ *
+ * @param node - AST node to check.
+ * @param specifier - Required module specifier.
+ */
 function isRequireCall(node: Node, specifier: string): boolean {
   if (node.type !== "CallExpression") return false;
   const call = node as CallExpressionNode;
@@ -44,6 +53,11 @@ function isRequireCall(node: Node, specifier: string): boolean {
   );
 }
 
+/**
+ * Detect a typeof module !== 'undefined' guard.
+ *
+ * @param node - AST node to check.
+ */
 function isTypeofModuleCheck(node: Node): boolean {
   if (node.type !== "BinaryExpression") return false;
   const test = node as Node & { operator: string; left: Node; right: Node };
@@ -57,6 +71,11 @@ function isTypeofModuleCheck(node: Node): boolean {
   );
 }
 
+/**
+ * Detect module.exports = payload.module assignments.
+ *
+ * @param node - AST node to check.
+ */
 function isModuleExportsPayloadAssignment(node: Node): boolean {
   if (node.type !== "AssignmentExpression") return false;
   const assignment = node as Node & {
@@ -71,6 +90,12 @@ function isModuleExportsPayloadAssignment(node: Node): boolean {
   );
 }
 
+/**
+ * Find the first statement in a list that matches a predicate.
+ *
+ * @param body - Statement list to search.
+ * @param predicate - Test function for matching.
+ */
 function findStatement(
   body: Node[],
   predicate: (node: Node) => boolean,
@@ -81,6 +106,11 @@ function findStatement(
   return null;
 }
 
+/**
+ * Find the wrapper's conditional module.exports reassignment.
+ *
+ * This identifies the cleanup assignment that is removed during conversion.
+ */
 function findModuleExportsReassign(
   root: Node,
   walkNode: (node: Node, visitors: { enter: (node: Node) => void }) => void,
@@ -121,7 +151,14 @@ function findModuleExportsReassign(
   return found;
 }
 
+/**
+ * Convert a generated CJS wrapper into an ESM-friendly variant.
+ *
+ * @param code - Wrapper source code from the CJS transformer.
+ * @returns Updated source or null when no conversion is applied.
+ */
 export function convertCJSWrapperToESM(code: string): string | null {
+  // Bail early if this isn't a wrapper we recognize.
   if (!code.includes("dc-polyfill")) return null;
   let ast: Node & { body: Node[] };
   try {
@@ -130,6 +167,7 @@ export function convertCJSWrapperToESM(code: string): string | null {
       sourceType: "module",
     }) as Node & { body: Node[] };
   } catch {
+    // If we can't parse, we can't safely rewrite.
     return null;
   }
 
@@ -141,6 +179,7 @@ export function convertCJSWrapperToESM(code: string): string | null {
 
   walkNode(ast, {
     enter(node: Node) {
+      // We only rewrite the wrapper IIFE with no arguments.
       if (node.type !== "CallExpression") return;
       const call = node as CallExpressionNode;
       if (call.arguments.length > 0) return;
@@ -149,6 +188,8 @@ export function convertCJSWrapperToESM(code: string): string | null {
       if (func.id) return;
 
       const bodyStatements = func.body.body;
+      // Find the "var dc = require('dc-polyfill')" declaration so we can
+      // replace it with a dynamic import.
       const requireDecl = findStatement(bodyStatements, (stmt) => {
         if (stmt.type !== "VariableDeclaration") return false;
         const decl = stmt as Node & {
@@ -165,8 +206,11 @@ export function convertCJSWrapperToESM(code: string): string | null {
 
       if (!requireDecl) return;
 
+      // Find the optional module.exports cleanup so we can drop it in ESM.
       const reassign = findModuleExportsReassign(func.body, walkNode);
 
+      // Rewrite the wrapper into an async-ish import callback:
+      // import('dc-polyfill').then(function(dc) { ... })
       s.overwrite(func.start, func.body.start, "function(dc) ");
       s.prependLeft(call.start, "import('dc-polyfill').then(");
       s.overwrite(func.end, call.end, "))");

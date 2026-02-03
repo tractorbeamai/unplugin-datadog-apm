@@ -4,7 +4,6 @@
  * @module
  */
 
-import { createBundlerEntry } from "./entrypoints/shared";
 import { DatadogAPM } from "./index";
 
 /**
@@ -20,6 +19,6 @@ import { DatadogAPM } from "./index";
  * }
  * ```
  */
-const rspack: typeof DatadogAPM.rspack = createBundlerEntry(DatadogAPM.rspack);
+const rspack: typeof DatadogAPM.rspack = DatadogAPM.rspack;
 export default rspack;
 export { rspack as "module.exports" };

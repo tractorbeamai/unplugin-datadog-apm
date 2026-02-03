@@ -4,7 +4,6 @@
  * @module
  */
 
-import { createBundlerEntry } from "./entrypoints/shared";
 import { DatadogAPM } from "./index";
 
 /**
@@ -20,6 +19,6 @@ import { DatadogAPM } from "./index";
  * }
  * ```
  */
-const rollup: typeof DatadogAPM.rollup = createBundlerEntry(DatadogAPM.rollup);
+const rollup: typeof DatadogAPM.rollup = DatadogAPM.rollup;
 export default rollup;
 export { rollup as "module.exports" };
