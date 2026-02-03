@@ -1,8 +1,9 @@
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
-import DatadogAPM from "unplugin-datadog-apm/vite";
 import { defineConfig } from "vite";
+
+import DatadogAPM from "../../src/vite";
 
 const externalPackages = [
   // Datadog - must be external to work at runtime
