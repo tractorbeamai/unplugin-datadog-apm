@@ -1,0 +1,400 @@
+/**
+ * Tests for module filtering logic.
+ * Verifies additionalModules, excludeModules, builtin skipping, and local import handling.
+ */
+import path from "node:path";
+
+import commonjs from "@rollup/plugin-commonjs";
+import nodeResolve from "@rollup/plugin-node-resolve";
+import { rollup } from "rollup";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import rollupPlugin from "../../src/rollup";
+import { createFixture, createTempDir } from "../utils";
+
+describe("module filtering", () => {
+  let tempDir: string;
+  let cleanup: () => void;
+
+  beforeEach(() => {
+    const temp = createTempDir();
+    tempDir = temp.tempDir;
+    cleanup = temp.cleanup;
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  describe("default filtering", () => {
+    it("does not wrap modules not in dd-trace hooks list", async () => {
+      createFixture(tempDir, {
+        "index.js": `const foo = require('unknown-module'); module.exports = foo;`,
+        "node_modules/unknown-module/package.json": JSON.stringify({
+          name: "unknown-module",
+          version: "1.0.0",
+          main: "index.js",
+        }),
+        "node_modules/unknown-module/index.js": `module.exports = {};`,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [
+          rollupPlugin({ debug: false }),
+          nodeResolve({ rootDir: tempDir }),
+          commonjs(),
+        ],
+      });
+
+      const result = await bundle.generate({ format: "cjs" });
+      const [output] = result.output;
+
+      expect(output.code).not.toContain("dd-trace:bundler:load");
+      expect(output.code).not.toContain("dc-polyfill");
+    });
+
+    it("wraps modules that are in dd-trace hooks list", async () => {
+      createFixture(tempDir, {
+        "index.js": `const pino = require('pino'); module.exports = pino;`,
+        "node_modules/pino/package.json": JSON.stringify({
+          name: "pino",
+          version: "8.0.0",
+          main: "index.js",
+        }),
+        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [
+          rollupPlugin({ debug: false }),
+          nodeResolve({ rootDir: tempDir }),
+          commonjs(),
+        ],
+        external: ["dc-polyfill"],
+      });
+
+      const result = await bundle.generate({ format: "cjs" });
+      const [output] = result.output;
+
+      expect(output.code).toContain("dd-trace:bundler:load");
+    });
+  });
+
+  describe("excludeModules option", () => {
+    it("excludes modules in excludeModules option", async () => {
+      createFixture(tempDir, {
+        "index.js": `const pino = require('pino'); module.exports = pino;`,
+        "node_modules/pino/package.json": JSON.stringify({
+          name: "pino",
+          version: "8.0.0",
+          main: "index.js",
+        }),
+        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [
+          rollupPlugin({ debug: false, excludeModules: ["pino"] }),
+          nodeResolve({ rootDir: tempDir }),
+          commonjs(),
+        ],
+      });
+
+      const result = await bundle.generate({ format: "cjs" });
+      const [output] = result.output;
+
+      expect(output.code).not.toContain("dd-trace:bundler:load");
+    });
+
+    it("can exclude multiple modules", async () => {
+      createFixture(tempDir, {
+        "index.js": `
+          const pino = require('pino');
+          const Redis = require('ioredis');
+          module.exports = { pino, Redis };
+        `,
+        "node_modules/pino/package.json": JSON.stringify({
+          name: "pino",
+          version: "8.0.0",
+          main: "index.js",
+        }),
+        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        "node_modules/ioredis/package.json": JSON.stringify({
+          name: "ioredis",
+          version: "5.3.0",
+          main: "index.js",
+        }),
+        "node_modules/ioredis/index.js": `module.exports = function Redis() {};`,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [
+          rollupPlugin({ debug: false, excludeModules: ["pino", "ioredis"] }),
+          nodeResolve({ rootDir: tempDir }),
+          commonjs(),
+        ],
+      });
+
+      const result = await bundle.generate({ format: "cjs" });
+      const [output] = result.output;
+
+      expect(output.code).not.toContain("dd-trace:bundler:load");
+    });
+
+    it("excludes only specified modules, keeps others", async () => {
+      createFixture(tempDir, {
+        "index.js": `
+          const pino = require('pino');
+          const Redis = require('ioredis');
+          module.exports = { pino, Redis };
+        `,
+        "node_modules/pino/package.json": JSON.stringify({
+          name: "pino",
+          version: "8.0.0",
+          main: "index.js",
+        }),
+        "node_modules/pino/index.js": `module.exports = { log: function() {} };`,
+        "node_modules/ioredis/package.json": JSON.stringify({
+          name: "ioredis",
+          version: "5.3.0",
+          main: "index.js",
+        }),
+        "node_modules/ioredis/index.js": `module.exports = function Redis() {};`,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [
+          rollupPlugin({ debug: false, excludeModules: ["pino"] }),
+          nodeResolve({ rootDir: tempDir }),
+          commonjs(),
+        ],
+        external: ["dc-polyfill"],
+      });
+
+      const result = await bundle.generate({ format: "cjs" });
+      const [output] = result.output;
+
+      // ioredis should still be instrumented
+      expect(output.code).toContain("dd-trace:bundler:load");
+      expect(output.code).toContain("ioredis");
+    });
+  });
+
+  describe("additionalModules option", () => {
+    it("includes modules in additionalModules option", async () => {
+      createFixture(tempDir, {
+        "index.js": `const custom = require('custom-module'); module.exports = custom;`,
+        "node_modules/custom-module/package.json": JSON.stringify({
+          name: "custom-module",
+          version: "1.0.0",
+          main: "index.js",
+        }),
+        "node_modules/custom-module/index.js": `module.exports = {};`,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [
+          rollupPlugin({ debug: false, additionalModules: ["custom-module"] }),
+          nodeResolve({ rootDir: tempDir }),
+          commonjs(),
+        ],
+        external: ["dc-polyfill"],
+      });
+
+      const result = await bundle.generate({ format: "cjs" });
+      const [output] = result.output;
+
+      expect(output.code).toContain("dd-trace:bundler:load");
+      expect(output.code).toContain("custom-module");
+    });
+
+    it("can add multiple additional modules", async () => {
+      createFixture(tempDir, {
+        "index.js": `
+          const custom1 = require('custom-one');
+          const custom2 = require('custom-two');
+          module.exports = { custom1, custom2 };
+        `,
+        "node_modules/custom-one/package.json": JSON.stringify({
+          name: "custom-one",
+          version: "1.0.0",
+          main: "index.js",
+        }),
+        "node_modules/custom-one/index.js": `module.exports = { name: 'one' };`,
+        "node_modules/custom-two/package.json": JSON.stringify({
+          name: "custom-two",
+          version: "2.0.0",
+          main: "index.js",
+        }),
+        "node_modules/custom-two/index.js": `module.exports = { name: 'two' };`,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [
+          rollupPlugin({
+            debug: false,
+            additionalModules: ["custom-one", "custom-two"],
+          }),
+          nodeResolve({ rootDir: tempDir }),
+          commonjs(),
+        ],
+        external: ["dc-polyfill"],
+      });
+
+      const result = await bundle.generate({ format: "cjs" });
+      const [output] = result.output;
+
+      const channelMatches = output.code.match(/dd-trace:bundler:load/g);
+      expect(channelMatches?.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("works with scoped packages in additionalModules", async () => {
+      createFixture(tempDir, {
+        "index.js": `const pkg = require('@myorg/my-pkg'); module.exports = pkg;`,
+        "node_modules/@myorg/my-pkg/package.json": JSON.stringify({
+          name: "@myorg/my-pkg",
+          version: "1.0.0",
+          main: "index.js",
+        }),
+        "node_modules/@myorg/my-pkg/index.js": `module.exports = {};`,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [
+          rollupPlugin({ debug: false, additionalModules: ["@myorg/my-pkg"] }),
+          nodeResolve({ rootDir: tempDir }),
+          commonjs(),
+        ],
+        external: ["dc-polyfill"],
+      });
+
+      const result = await bundle.generate({ format: "cjs" });
+      const [output] = result.output;
+
+      expect(output.code).toContain("dd-trace:bundler:load");
+      expect(output.code).toContain("@myorg/my-pkg");
+    });
+  });
+
+  describe("local imports", () => {
+    it("does not wrap local imports", async () => {
+      createFixture(tempDir, {
+        "index.js": `import { helper } from './utils.js'; export { helper };`,
+        "utils.js": `export const helper = () => {};`,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [rollupPlugin({ debug: false })],
+      });
+
+      const result = await bundle.generate({ format: "es" });
+      const [output] = result.output;
+
+      expect(output.code).not.toContain("dd-trace:bundler:load");
+      expect(output.code).not.toContain("import-in-the-middle");
+    });
+
+    it("does not wrap relative imports from app code", async () => {
+      createFixture(tempDir, {
+        "index.js": `
+          import { a } from './lib/a.js';
+          import { b } from '../shared/b.js';
+          export { a, b };
+        `,
+        "lib/a.js": `export const a = 1;`,
+        "../shared/b.js": `export const b = 2;`,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [rollupPlugin({ debug: false })],
+        onwarn() {
+          // Suppress warnings about missing ../shared/b.js
+        },
+      });
+
+      const result = await bundle.generate({ format: "es" });
+      const [output] = result.output;
+
+      expect(output.code).not.toContain("dd-trace:bundler:load");
+      expect(output.code).not.toContain("import-in-the-middle");
+    });
+  });
+
+  describe("Node.js builtins", () => {
+    it("skips Node.js builtin modules", async () => {
+      createFixture(tempDir, {
+        "index.js": `
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import http from 'http';
+          export { fs, path, http };
+        `,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [rollupPlugin({ debug: false })],
+        external: ["node:fs", "node:path", "http"],
+      });
+
+      const result = await bundle.generate({ format: "es" });
+      const [output] = result.output;
+
+      // Builtins should not be wrapped - they're handled at runtime by dd-trace
+      expect(output.code).not.toContain("dd-trace:bundler:load");
+      expect(output.code).not.toContain("import-in-the-middle");
+    });
+
+    it("skips builtins with node: prefix", async () => {
+      createFixture(tempDir, {
+        "index.js": `
+          import crypto from 'node:crypto';
+          import stream from 'node:stream';
+          export { crypto, stream };
+        `,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [rollupPlugin({ debug: false })],
+        external: ["node:crypto", "node:stream"],
+      });
+
+      const result = await bundle.generate({ format: "es" });
+      const [output] = result.output;
+
+      expect(output.code).not.toContain("dd-trace:bundler:load");
+    });
+
+    it("skips builtins without node: prefix", async () => {
+      createFixture(tempDir, {
+        "index.js": `
+          import fs from 'fs';
+          import path from 'path';
+          export { fs, path };
+        `,
+      });
+
+      const bundle = await rollup({
+        input: path.join(tempDir, "index.js"),
+        plugins: [rollupPlugin({ debug: false })],
+        external: ["fs", "path"],
+      });
+
+      const result = await bundle.generate({ format: "es" });
+      const [output] = result.output;
+
+      expect(output.code).not.toContain("dd-trace:bundler:load");
+    });
+  });
+});

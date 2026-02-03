@@ -1,1 +1,4 @@
 pnpm-lock.yaml
+.test-temp*
+examples/**/.output/**
+examples/**/src/routeTree.gen.ts

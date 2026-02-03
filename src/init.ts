@@ -5,6 +5,11 @@
  * For Vite/Nitro, this is automatically configured.
  * For other bundlers, entry points are wrapped to import this module first.
  *
+ * Based on dd-trace's initialize.mjs, this module:
+ * 1. Only initializes on the main thread
+ * 2. Initializes dd-trace via synchronous require (before any ESM imports)
+ * 3. Registers the ESM loader hook for runtime instrumentation of external modules
+ *
  * Configuration is done via environment variables:
  * - DD_SERVICE: Service name
  * - DD_ENV: Environment (e.g., "production", "staging")
@@ -17,21 +22,28 @@
  * @module
  */
 
+import * as Module from "node:module";
 import { createRequire } from "node:module";
+import { isMainThread } from "node:worker_threads";
 
+import { IITM_EXCLUSION_PATTERNS } from "./core/constants";
+import { initTracer } from "./core/init-tracer";
+
+// Only initialize on main thread (same as native dd-trace)
+// Worker threads inherit the tracer from the main thread
 const require = createRequire(import.meta.url);
-
-// Initialize on import (side-effect module)
-const tracer = require("dd-trace");
-tracer.init();
-
-if (process.env.DD_TRACE_DEBUG) {
-  console.log("[unplugin-datadog-apm] dd-trace initialized");
-}
-
-const tracerProvider = new tracer.TracerProvider();
-tracerProvider.register();
-
-if (process.env.DD_TRACE_DEBUG) {
-  console.log("[unplugin-datadog-apm] TracerProvider registered with OTel API");
-}
+initTracer({
+  require,
+  debug: Boolean(process.env.DD_TRACE_DEBUG),
+  debugMessages: {
+    init: "[unplugin-datadog-apm] dd-trace initialized",
+    tracerProvider:
+      "[unplugin-datadog-apm] TracerProvider registered with OTel API",
+    loaderHook: "[unplugin-datadog-apm] ESM loader hook registered",
+  },
+  registerLoaderHook: true,
+  moduleNamespace: Module,
+  loaderHookBaseUrl: import.meta.url,
+  iitmExclusions: IITM_EXCLUSION_PATTERNS,
+  isMainThread,
+});

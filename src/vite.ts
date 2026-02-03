@@ -4,6 +4,7 @@
  * @module
  */
 
+import { createBundlerEntry } from "./entrypoints/shared";
 import { unpluginDatadogApm } from "./index";
 
 /**
@@ -19,10 +20,12 @@ import { unpluginDatadogApm } from "./index";
  * })
  * ```
  */
-const vite: typeof unpluginDatadogApm.vite = unpluginDatadogApm.vite;
+const vite: typeof unpluginDatadogApm.vite = createBundlerEntry(
+  unpluginDatadogApm.vite,
+);
 export default vite;
 
 export { vite as DatadogAPM };
 export { vite as "module.exports" };
 
-export { type Options } from "./core/options";
+export { type Options } from "./entrypoints/shared";

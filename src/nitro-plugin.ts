@@ -12,6 +12,8 @@
 
 import { createRequire } from "node:module";
 
+import { initTracer } from "./core/init-tracer";
+
 const require = createRequire(import.meta.url);
 
 /**
@@ -19,19 +21,13 @@ const require = createRequire(import.meta.url);
  * Exported as a plain function - Nitro's defineNitroPlugin is just a passthrough.
  */
 export default function datadogApmPlugin(): void {
-  const tracer = require("dd-trace");
-  tracer.init();
-
-  if (process.env.DD_TRACE_DEBUG) {
-    console.log("[unplugin-datadog-apm] dd-trace initialized in Nitro");
-  }
-
-  const tracerProvider = new tracer.TracerProvider();
-  tracerProvider.register();
-
-  if (process.env.DD_TRACE_DEBUG) {
-    console.log(
-      "[unplugin-datadog-apm] TracerProvider registered with OTel API",
-    );
-  }
+  initTracer({
+    require,
+    debug: Boolean(process.env.DD_TRACE_DEBUG),
+    debugMessages: {
+      init: "[unplugin-datadog-apm] dd-trace initialized in Nitro",
+      tracerProvider:
+        "[unplugin-datadog-apm] TracerProvider registered with OTel API",
+    },
+  });
 }

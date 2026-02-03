@@ -150,6 +150,31 @@ export default {
 - **Plugin order**: The plugin uses `enforce: 'pre'` to run before other transforms.
 - **Module detection**: The plugin uses dd-trace's internal utilities to detect which modules are instrumentable and whether they're ESM or CommonJS.
 
+## Known Limitations
+
+### Webpack/Rspack ESM Output
+
+When using webpack or rspack with ESM output (`library.type: 'module'`), automatic dd-trace instrumentation does not work without the `--import` flag.
+
+**Why?** Webpack and rspack resolve external modules at bundle load time, before any application code runs. This means the ESM loader hook cannot intercept imports because they're resolved before the hook is registered.
+
+**Solution:** For ESM output from webpack/rspack, use the `--import` flag:
+
+```bash
+node --import dd-trace/initialize dist/server.mjs
+```
+
+**CJS output works without `--import`** because the plugin's CJS wrapper code intercepts `require()` calls at runtime.
+
+| Bundler  | CJS Output | ESM Output          |
+| -------- | ---------- | ------------------- |
+| esbuild  | Works      | Works               |
+| Rollup   | Works      | Works               |
+| Rolldown | Works      | Works               |
+| Vite     | N/A        | Works               |
+| Webpack  | Works      | Requires `--import` |
+| Rspack   | Works      | Requires `--import` |
+
 ## Examples
 
 See the [examples](./examples) directory for complete working examples:

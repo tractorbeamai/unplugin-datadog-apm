@@ -13,8 +13,7 @@
     "rspack",
     "rollup",
     "rolldown",
-    "esbuild",
-    "farm"
+    "esbuild"
   ],
   "homepage": "https://github.com/tractorbeamai/unplugin-datadog-apm#readme",
   "bugs": {
@@ -30,7 +29,6 @@
     ".": "./dist/index.js",
     "./api": "./dist/api.js",
     "./esbuild": "./dist/esbuild.js",
-    "./farm": "./dist/farm.js",
     "./init": "./dist/init.js",
     "./nitro-plugin": "./dist/nitro-plugin.js",
     "./rolldown": "./dist/rolldown.js",
@@ -42,9 +40,35 @@
   },
   "typesVersions": {
     "*": {
-      "*": [
-        "./dist/*.d.ts",
-        "./*"
+      ".": [
+        "./dist/index.d.ts"
+      ],
+      "api": [
+        "./dist/api.d.ts"
+      ],
+      "esbuild": [
+        "./dist/esbuild.d.ts"
+      ],
+      "init": [
+        "./dist/init.d.ts"
+      ],
+      "nitro-plugin": [
+        "./dist/nitro-plugin.d.ts"
+      ],
+      "rolldown": [
+        "./dist/rolldown.d.ts"
+      ],
+      "rollup": [
+        "./dist/rollup.d.ts"
+      ],
+      "rspack": [
+        "./dist/rspack.d.ts"
+      ],
+      "vite": [
+        "./dist/vite.d.ts"
+      ],
+      "webpack": [
+        "./dist/webpack.d.ts"
       ]
     }
   },
@@ -62,40 +86,51 @@
     "lint:types": "tsc --noEmit",
     "prepublishOnly": "pnpm run build",
     "release": "pnpm build && changeset publish",
-    "test": "vitest"
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "prettier": "@tractorbeam/prettier-config",
   "dependencies": {
     "acorn": "^8.15.0",
     "consola": "^3.4.2",
+    "dc-polyfill": "^0.1.10",
+    "estree-walker": "^3.0.3",
     "exsolve": "^1.0.8",
+    "import-in-the-middle": "^2.0.3",
+    "magic-string": "^0.30.21",
     "unplugin": "^3.0.0"
   },
   "devDependencies": {
-    "@ai-sdk/anthropic": "^3.0.35",
-    "@anthropic-ai/sdk": "^0.72.1",
     "@changesets/cli": "^2.29.8",
     "@eslint/compat": "^2.0.2",
+    "@opentelemetry/api": "^1.9.0",
     "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rspack/core": "^1.7.4",
     "@tractorbeam/eslint-config": "^0.3.0",
     "@tractorbeam/prettier-config": "^0.1.2",
     "@tractorbeam/typescript-config": "^0.3.0",
+    "@types/estree": "^1.0.8",
+    "@types/express": "^5.0.6",
     "@types/node": "^25.2.0",
-    "ai": "^6.0.68",
+    "@vitest/coverage-v8": "^4.0.18",
     "dd-trace": "^5.84.0",
+    "esbuild": "^0.25.12",
     "eslint": "^9.39.2",
+    "express": "^5.2.1",
     "jiti": "^2.6.1",
     "nock": "^14.0.10",
-    "openai": "^6.17.0",
     "prettier": "^3.8.1",
+    "rolldown": "1.0.0-rc.2",
     "rollup": "^4.57.1",
     "tsdown": "^0.20.1",
     "tsdown-preset-sxzz": "^0.3.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.54.0",
     "vite": "^7.3.1",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "webpack": "^5.104.1"
   },
   "peerDependencies": {
     "dd-trace": ">=5.0.0",

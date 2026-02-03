@@ -4,6 +4,7 @@
  * @module
  */
 
+import { createBundlerEntry } from "./entrypoints/shared";
 import { DatadogAPM } from "./index";
 
 /**
@@ -17,6 +18,8 @@ import { DatadogAPM } from "./index";
  * build({ plugins: [DatadogAPM()] })
 ```
  */
-const esbuild: typeof DatadogAPM.esbuild = DatadogAPM.esbuild;
+const esbuild: typeof DatadogAPM.esbuild = createBundlerEntry(
+  DatadogAPM.esbuild,
+);
 export default esbuild;
 export { esbuild as "module.exports" };

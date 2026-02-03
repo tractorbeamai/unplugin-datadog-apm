@@ -13,5 +13,10 @@ export default defineConfig([
   typescript,
   node,
   includeIgnoreFile(path.resolve(__dirname, ".gitignore")),
-  globalIgnores(["dist/**", "prior_work/**", "*.config.ts"]),
+  globalIgnores([
+    "dist/**",
+    "prior_work/**",
+    "*.config.ts",
+    "examples/**/.output/**",
+  ]),
 ]);
