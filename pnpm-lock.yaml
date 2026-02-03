@@ -105,9 +105,6 @@ importers:
       tsdown:
         specifier: ^0.20.1
         version: 0.20.1(@arethetypeswrong/core@0.18.2)(publint@0.3.17)(synckit@0.11.12)(typescript@5.9.3)
-      tsdown-preset-sxzz:
-        specifier: ^0.3.1
-        version: 0.3.1(tsdown@0.20.1(@arethetypeswrong/core@0.18.2)(publint@0.3.17)(synckit@0.11.12)(typescript@5.9.3))
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -4253,12 +4250,6 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4'
 
-  tsdown-preset-sxzz@0.3.1:
-    resolution: {integrity: sha512-uxycOzSI1NFWgtdt1u7c2msxZiJy/5wtSqiQNYtKkct+pP3JjsvMzAstoP3BIwkMFXLl2Th8oeXwdDp6qjGfTw==}
-    engines: {node: '>=20.19.0'}
-    peerDependencies:
-      tsdown: ^0.20.0
-
   tsdown@0.20.1:
     resolution: {integrity: sha512-Wo1BzqNQVZ6SFQV8rjQBwMmNubO+yV3F+vp2WNTjEaS4S5CT1C1dHtUbeFMrCEasZpGy5w6TshpehNnfTe8QBQ==}
     engines: {node: '>=20.19.0'}
@@ -4696,7 +4687,8 @@ packages:
 
 snapshots:
 
-  '@andrewbranch/untar.js@1.0.3': {}
+  '@andrewbranch/untar.js@1.0.3':
+    optional: true
 
   '@arethetypeswrong/core@0.18.2':
     dependencies:
@@ -4708,6 +4700,7 @@ snapshots:
       semver: 7.7.3
       typescript: 5.6.1-rc
       validate-npm-package-name: 5.0.1
+    optional: true
 
   '@babel/code-frame@7.27.1':
     dependencies:
@@ -4979,7 +4972,8 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@braidai/lang@1.1.2': {}
+  '@braidai/lang@1.1.2':
+    optional: true
 
   '@changesets/apply-release-plan@7.0.14':
     dependencies:
@@ -5457,6 +5451,7 @@ snapshots:
   '@loaderkit/resolve@1.0.4':
     dependencies:
       '@braidai/lang': 1.1.2
+    optional: true
 
   '@manypkg/find-root@1.1.0':
     dependencies:
@@ -5708,7 +5703,8 @@ snapshots:
   '@pkgr/core@0.2.9':
     optional: true
 
-  '@publint/pack@0.1.3': {}
+  '@publint/pack@0.1.3':
+    optional: true
 
   '@quansync/fs@1.0.0':
     dependencies:
@@ -6843,7 +6839,8 @@ snapshots:
 
   ci-info@4.4.0: {}
 
-  cjs-module-lexer@1.4.3: {}
+  cjs-module-lexer@1.4.3:
+    optional: true
 
   cjs-module-lexer@2.2.0: {}
 
@@ -7502,7 +7499,8 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.3
 
-  fflate@0.8.2: {}
+  fflate@0.8.2:
+    optional: true
 
   file-entry-cache@8.0.0:
     dependencies:
@@ -8034,7 +8032,8 @@ snapshots:
     dependencies:
       js-tokens: 4.0.0
 
-  lru-cache@11.2.4: {}
+  lru-cache@11.2.4:
+    optional: true
 
   lru-cache@5.1.1:
     dependencies:
@@ -8325,7 +8324,8 @@ snapshots:
     dependencies:
       quansync: 0.2.11
 
-  package-manager-detector@1.6.0: {}
+  package-manager-detector@1.6.0:
+    optional: true
 
   parent-module@1.0.1:
     dependencies:
@@ -8416,6 +8416,7 @@ snapshots:
       package-manager-detector: 1.6.0
       picocolors: 1.1.1
       sade: 1.8.1
+    optional: true
 
   punycode@2.3.1: {}
 
@@ -8633,6 +8634,7 @@ snapshots:
   sade@1.8.1:
     dependencies:
       mri: 1.2.0
+    optional: true
 
   safe-array-concat@1.1.3:
     dependencies:
@@ -8959,12 +8961,6 @@ snapshots:
     dependencies:
       typescript: 5.9.3
 
-  tsdown-preset-sxzz@0.3.1(tsdown@0.20.1(@arethetypeswrong/core@0.18.2)(publint@0.3.17)(synckit@0.11.12)(typescript@5.9.3)):
-    dependencies:
-      '@arethetypeswrong/core': 0.18.2
-      publint: 0.3.17
-      tsdown: 0.20.1(@arethetypeswrong/core@0.18.2)(publint@0.3.17)(synckit@0.11.12)(typescript@5.9.3)
-
   tsdown@0.20.1(@arethetypeswrong/core@0.18.2)(publint@0.3.17)(synckit@0.11.12)(typescript@5.9.3):
     dependencies:
       ansis: 4.2.0
@@ -9057,7 +9053,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  typescript@5.6.1-rc: {}
+  typescript@5.6.1-rc:
+    optional: true
 
   typescript@5.9.3: {}
 
@@ -9126,7 +9123,8 @@ snapshots:
     dependencies:
       react: 19.2.4
 
-  validate-npm-package-name@5.0.1: {}
+  validate-npm-package-name@5.0.1:
+    optional: true
 
   vary@1.1.2: {}
 

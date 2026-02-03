@@ -2,7 +2,7 @@
 
 [![npm version][npm-version-src]][npm-version-href]
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
-[![Unit Test][unit-test-src]][unit-test-href]
+[![CI][ci-src]][ci-href]
 
 Build-time plugin for Datadog APM instrumentation in bundled Node.js applications. Enables `dd-trace` to instrument bundled modules by wrapping them at build time.
 
@@ -179,7 +179,7 @@ node --import dd-trace/initialize dist/server.mjs
 
 See the [examples](./examples) directory for complete working examples:
 
-- [TanStack Start + Vite + Nitro](./examples/tanstack-start)
+- [TanStack Start + Vite + Nitro](./examples/vite-nitro-tanstack-start)
 
 ## How It Works
 
@@ -235,5 +235,5 @@ register(moduleUrl, _, set, get, rawImportPath);
 [npm-version-href]: https://npmjs.com/package/unplugin-datadog-apm
 [npm-downloads-src]: https://img.shields.io/npm/dm/unplugin-datadog-apm
 [npm-downloads-href]: https://www.npmcharts.com/compare/unplugin-datadog-apm?interval=30
-[unit-test-src]: https://github.com/sxzz/unplugin-datadog-apm/actions/workflows/unit-test.yml/badge.svg
-[unit-test-href]: https://github.com/sxzz/unplugin-datadog-apm/actions/workflows/unit-test.yml
+[ci-src]: https://github.com/tractorbeamai/unplugin-datadog-apm/actions/workflows/ci.yml/badge.svg
+[ci-href]: https://github.com/tractorbeamai/unplugin-datadog-apm/actions/workflows/ci.yml
