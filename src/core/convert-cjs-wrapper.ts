@@ -28,6 +28,12 @@ type FunctionExpressionNode = Node & {
   end: number;
 };
 
+/**
+ * Check if a node refers to payload.module.
+ *
+ * @param node - AST node to check.
+ * @returns True when the node is payload.module.
+ */
 function isPayloadModuleMemberExpression(node: Node): boolean {
   if (node.type !== "MemberExpression") return false;
   const member = node as MemberExpressionNode;
@@ -42,6 +48,7 @@ function isPayloadModuleMemberExpression(node: Node): boolean {
  *
  * @param node - AST node to check.
  * @param specifier - Required module specifier.
+ * @returns True when the node matches the require call.
  */
 function isRequireCall(node: Node, specifier: string): boolean {
   if (node.type !== "CallExpression") return false;
@@ -57,6 +64,7 @@ function isRequireCall(node: Node, specifier: string): boolean {
  * Detect a typeof module !== 'undefined' guard.
  *
  * @param node - AST node to check.
+ * @returns True when the node matches the typeof guard.
  */
 function isTypeofModuleCheck(node: Node): boolean {
   if (node.type !== "BinaryExpression") return false;
@@ -75,6 +83,7 @@ function isTypeofModuleCheck(node: Node): boolean {
  * Detect module.exports = payload.module assignments.
  *
  * @param node - AST node to check.
+ * @returns True when the node is the matching assignment.
  */
 function isModuleExportsPayloadAssignment(node: Node): boolean {
   if (node.type !== "AssignmentExpression") return false;
@@ -95,6 +104,7 @@ function isModuleExportsPayloadAssignment(node: Node): boolean {
  *
  * @param body - Statement list to search.
  * @param predicate - Test function for matching.
+ * @returns First matching statement or null.
  */
 function findStatement(
   body: Node[],
@@ -110,6 +120,10 @@ function findStatement(
  * Find the wrapper's conditional module.exports reassignment.
  *
  * This identifies the cleanup assignment that is removed during conversion.
+ *
+ * @param root - Root AST node to search.
+ * @param walkNode - Walker for traversing the AST.
+ * @returns Matching node or null when not found.
  */
 function findModuleExportsReassign(
   root: Node,
@@ -156,6 +170,7 @@ function findModuleExportsReassign(
  *
  * @param code - Wrapper source code from the CJS transformer.
  * @returns Updated source or null when no conversion is applied.
+ * @see https://github.com/DataDog/dd-trace-js/blob/master/packages/datadog-esbuild/index.js
  */
 export function convertCJSWrapperToESM(code: string): string | null {
   // Bail early if this isn't a wrapper we recognize.

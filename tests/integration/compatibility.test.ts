@@ -40,7 +40,7 @@ describe("compatibility", () => {
         const [output] = result.output;
 
         expect(output.code).toContain("dd-trace:bundler:load");
-        expect(output.code).toContain("package: 'pino'");
+        expect(output.code).toMatch(/package:\s*["']pino["']/);
       });
     });
 
@@ -77,7 +77,7 @@ describe("compatibility", () => {
         const [output] = result.output;
 
         expect(output.code).toContain("dd-trace:bundler:load");
-        expect(output.code).toContain("package: 'pino'");
+        expect(output.code).toMatch(/package:\s*["']pino["']/);
       });
 
       it("handles nested pnpm dependencies", async () => {
@@ -158,7 +158,7 @@ describe("compatibility", () => {
         const [output] = result.output;
 
         expect(output.code).toContain("dd-trace:bundler:load");
-        expect(output.code).toContain("package: 'pino'");
+        expect(output.code).toMatch(/package:\s*["']pino["']/);
       });
     });
 

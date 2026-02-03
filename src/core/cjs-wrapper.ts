@@ -99,9 +99,9 @@ ${intercepted}
   if (mod) {
     var payload = {
       module: mod,
-      version: '${moduleInfo.version}',
-      package: '${moduleInfo.pkg}',
-      path: '${pkgPath}'
+      version: ${JSON.stringify(moduleInfo.version)},
+      package: ${JSON.stringify(moduleInfo.pkg)},
+      path: ${JSON.stringify(pkgPath)}
     };
     // Publish the payload so dd-trace can observe module exports.
     ch.publish(payload);

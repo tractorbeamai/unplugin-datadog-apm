@@ -113,7 +113,7 @@ describe("wrapCommonJSModule", () => {
         version: "2.5.3",
       });
 
-      expect(wrapped).toContain("version: '2.5.3'");
+      expect(wrapped).toMatch(/version:\s*["']2\.5\.3["']/);
     });
 
     it("includes package name", () => {
@@ -123,7 +123,7 @@ describe("wrapCommonJSModule", () => {
         version: "1.0.0",
       });
 
-      expect(wrapped).toContain("package: 'my-package'");
+      expect(wrapped).toMatch(/package:\s*["']my-package["']/);
     });
 
     it("includes path for root import", () => {
@@ -133,7 +133,7 @@ describe("wrapCommonJSModule", () => {
         version: "4.17.21",
       });
 
-      expect(wrapped).toContain("path: 'lodash'");
+      expect(wrapped).toMatch(/path:\s*["']lodash["']/);
     });
 
     it("includes full path for submodule import", () => {
@@ -143,7 +143,7 @@ describe("wrapCommonJSModule", () => {
         version: "4.17.21",
       });
 
-      expect(wrapped).toContain("path: 'lodash/get'");
+      expect(wrapped).toMatch(/path:\s*["']lodash\/get["']/);
     });
 
     it("handles deep submodule paths", () => {
@@ -153,7 +153,7 @@ describe("wrapCommonJSModule", () => {
         version: "4.17.21",
       });
 
-      expect(wrapped).toContain("path: 'lodash/fp/get'");
+      expect(wrapped).toMatch(/path:\s*["']lodash\/fp\/get["']/);
     });
   });
 
@@ -165,8 +165,8 @@ describe("wrapCommonJSModule", () => {
         version: "3.500.0",
       });
 
-      expect(wrapped).toContain("package: '@aws-sdk/client-s3'");
-      expect(wrapped).toContain("path: '@aws-sdk/client-s3'");
+      expect(wrapped).toMatch(/package:\s*["']@aws-sdk\/client-s3["']/);
+      expect(wrapped).toMatch(/path:\s*["']@aws-sdk\/client-s3["']/);
     });
 
     it("handles scoped package with subpath", () => {
@@ -176,8 +176,8 @@ describe("wrapCommonJSModule", () => {
         version: "3.500.0",
       });
 
-      expect(wrapped).toContain(
-        "path: '@aws-sdk/client-s3/commands/GetObjectCommand'",
+      expect(wrapped).toMatch(
+        /path:\s*["']@aws-sdk\/client-s3\/commands\/GetObjectCommand["']/,
       );
     });
   });
@@ -244,7 +244,7 @@ describe("wrapCommonJSModule", () => {
         version: "1.0.0",
       });
 
-      expect(wrapped).toContain("package: 'my-cool-package'");
+      expect(wrapped).toMatch(/package:\s*["']my-cool-package["']/);
     });
 
     it("handles version strings with pre-release tags", () => {
@@ -254,7 +254,7 @@ describe("wrapCommonJSModule", () => {
         version: "1.0.0-beta.1",
       });
 
-      expect(wrapped).toContain("version: '1.0.0-beta.1'");
+      expect(wrapped).toMatch(/version:\s*["']1\.0\.0-beta\.1["']/);
     });
   });
 });

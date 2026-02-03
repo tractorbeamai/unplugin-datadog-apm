@@ -16,6 +16,7 @@ export interface InitTracerOptions {
   require: NodeJS.Require;
   debug: boolean;
   debugMessages: DebugMessages;
+  tracerOptions?: Parameters<Tracer["init"]>[0];
   registerLoaderHook?: boolean;
   moduleNamespace?: {
     register?: (
@@ -51,12 +52,14 @@ function logDebug(enabled: boolean, message: string | undefined): void {
  *   debug: false,
  *   debugMessages: { init: "", tracerProvider: "" },
  * });
+ * @see https://github.com/DataDog/dd-trace-js/blob/master/packages/datadog-esbuild/index.js
+ * @see https://github.com/DataDog/dd-trace-js/blob/master/initialize.mjs
  */
 export function initTracer(options: InitTracerOptions): void {
   if (options.isMainThread === false) return;
 
   const tracer = options.require("dd-trace") as Tracer;
-  tracer.init();
+  tracer.init(options.tracerOptions);
   logDebug(options.debug, options.debugMessages.init);
 
   const tracerProvider = new tracer.TracerProvider();

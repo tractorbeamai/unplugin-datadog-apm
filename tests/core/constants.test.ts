@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   CHANNEL,
-  DD_TRACE_INIT_BANNER,
   ENTRY_WRAPPER_PREFIX,
   ESM_PROXY_SUFFIX,
   IITM_EXCLUSION_PATTERNS,
@@ -112,20 +111,6 @@ describe("constants", () => {
 
     it("NODE_MODULES is correct path segment", () => {
       expect(NODE_MODULES).toBe("node_modules/");
-    });
-  });
-
-  describe("DD_TRACE_INIT_BANNER", () => {
-    it("imports the init module", () => {
-      expect(DD_TRACE_INIT_BANNER).toContain("unplugin-datadog-apm/init");
-    });
-
-    it("uses import syntax", () => {
-      expect(DD_TRACE_INIT_BANNER).toContain("import");
-    });
-
-    it("includes comment about auto-injection", () => {
-      expect(DD_TRACE_INIT_BANNER).toContain("Auto-injected");
     });
   });
 });

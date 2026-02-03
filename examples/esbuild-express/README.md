@@ -1,4 +1,4 @@
-# esbuild + Express Example
+# Express + esbuild Example
 
 Example Express API bundled with esbuild, demonstrating `unplugin-datadog-apm` instrumentation.
 
@@ -41,7 +41,7 @@ Expected response when tracing is working:
 ## How It Works
 
 1. `build.mjs` uses esbuild with the `unplugin-datadog-apm/esbuild` plugin
-2. The plugin wraps instrumentable modules (like `express`, `router`, `body-parser`) for dd-trace
-3. A banner imports `unplugin-datadog-apm/init` before any bundled code runs
+2. The plugin wraps instrumentable modules (like `express`) for dd-trace
+3. `autoInit: true` (default) injects `unplugin-datadog-apm/init` at the entry point
 4. The init module initializes dd-trace and registers the TracerProvider with OpenTelemetry API
 5. The `/api/health` endpoint uses `@opentelemetry/api` to verify tracing is active

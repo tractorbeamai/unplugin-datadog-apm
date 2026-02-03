@@ -8,7 +8,7 @@ await esbuild.build({
   target: "node20",
   format: "esm",
   outfile: "dist/server.mjs",
-  plugins: [DatadogAPM({ debug: true })],
+  plugins: [DatadogAPM()],
   // Note: dd-trace and @opentelemetry/api are auto-externalized by the plugin
 });
 

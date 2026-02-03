@@ -149,34 +149,6 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/express-esbuild:
-    dependencies:
-      '@opentelemetry/api':
-        specifier: ^1.9.0
-        version: 1.9.0
-      dd-trace:
-        specifier: ^5.84.0
-        version: 5.84.0(@openfeature/server-sdk@1.18.0(@openfeature/core@1.9.1))
-      express:
-        specifier: ^5.1.0
-        version: 5.2.1
-      unplugin-datadog-apm:
-        specifier: workspace:*
-        version: link:../..
-    devDependencies:
-      '@types/express':
-        specifier: ^5.0.0
-        version: 5.0.6
-      '@types/node':
-        specifier: ^25.2.0
-        version: 25.2.0
-      esbuild:
-        specifier: ^0.25.6
-        version: 0.25.12
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
   examples/vite-nitro-tanstack-start:
     dependencies:
       '@opentelemetry/api':

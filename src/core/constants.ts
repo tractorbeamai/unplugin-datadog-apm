@@ -50,12 +50,6 @@ export const INIT_MODULE = "unplugin-datadog-apm/init";
 /** Path segment for detecting node_modules. */
 export const NODE_MODULES = "node_modules/";
 
-/** Rollup banner for production builds; imports init first. */
-export const DD_TRACE_INIT_BANNER = `
-// Auto-injected by unplugin-datadog-apm
-import 'unplugin-datadog-apm/init';
-`;
-
 // -----------------------------------------------------------------------------
 // Externals
 // -----------------------------------------------------------------------------
@@ -69,6 +63,9 @@ import 'unplugin-datadog-apm/init';
 export const ESBUILD_EXTERNALS = [
   "dd-trace",
   "@opentelemetry/api",
+  "@openfeature/core",
+  "dc-polyfill",
+  "import-in-the-middle",
   "unplugin-datadog-apm",
 ] as const;
 

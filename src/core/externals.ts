@@ -11,6 +11,7 @@ type ExternalLike =
  * Normalize an external into a stable key for comparisons.
  *
  * @param ext - External value to normalize.
+ * @returns String key for comparison.
  */
 function getExternalKey(ext: External): string {
   if (typeof ext === "string") return `str:${ext}`;
@@ -21,6 +22,10 @@ function getExternalKey(ext: External): string {
  * Append required externals while preserving existing entries.
  *
  * This keeps non-string externals intact and avoids duplicates.
+ *
+ * @param existing - Existing externals list.
+ * @param required - Required externals to add.
+ * @returns Updated externals list with required items appended.
  */
 function dedupeRequiredExternals(
   existing: ExternalLike[],
@@ -50,6 +55,7 @@ function dedupeRequiredExternals(
  *
  * @param source - Import specifier to test.
  * @param externals - List of externals with strings or patterns.
+ * @returns True when the source matches.
  */
 export function matchesExternal(
   source: string,
@@ -70,6 +76,7 @@ export function matchesExternal(
  *
  * @param existing - Existing bundler externals config.
  * @param required - Externals that must always be preserved.
+ * @returns Updated externals config that includes required entries.
  */
 export function mergeExternals(
   existing: unknown,
@@ -100,6 +107,7 @@ export function mergeExternals(
  *
  * @param existing - Existing bundler externals config.
  * @param required - Externals that must always be preserved.
+ * @returns Externals list with required entries appended.
  */
 export function appendExternals(
   existing: unknown,
@@ -118,6 +126,7 @@ export function appendExternals(
  * Return only string externals for APIs that reject RegExp entries.
  *
  * @param externals - Mixed externals list.
+ * @returns Externals filtered to strings only.
  */
 export function getStringExternals(externals: External[]): string[] {
   return externals.filter((e): e is string => typeof e === "string");

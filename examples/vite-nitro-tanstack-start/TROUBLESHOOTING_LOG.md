@@ -429,7 +429,9 @@ export const unpluginDatadogApm = createUnplugin((options) => ({
       return {
         nitro: {
           plugins: [nitroPluginPath],
-          rollupConfig: { output: { banner: DD_TRACE_INIT_BANNER } },
+          rollupConfig: {
+            output: { banner: generateRollupInitBanner(tracerOptionsCode) },
+          },
         },
       };
     },

@@ -108,10 +108,10 @@ describe("output structure verification", () => {
 
       // Payload structure verification
       expect(output.code).toContain("module: mod");
-      expect(output.code).toContain("version: '8.0.0'");
-      expect(output.code).toContain("package: 'pino'");
+      expect(output.code).toMatch(/version:\s*["']8\.0\.0["']/);
+      expect(output.code).toMatch(/package:\s*["']pino["']/);
       // Path includes the resolved file path (e.g., pino/index.js)
-      expect(output.code).toMatch(/path: 'pino/);
+      expect(output.code).toMatch(/path:\s*["']pino/);
     });
 
     it("includes correct path for submodule imports", async () => {
@@ -134,7 +134,7 @@ describe("output structure verification", () => {
       const [output] = result.output;
 
       // Path should include submodule path
-      expect(output.code).toContain("path: 'lodash/get");
+      expect(output.code).toMatch(/path:\s*["']lodash\/get/);
     });
 
     it("publishes to channel and reassigns module.exports", async () => {

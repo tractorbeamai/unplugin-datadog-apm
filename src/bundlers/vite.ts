@@ -1,6 +1,7 @@
 import type { ConsolaInstance } from "consola";
 
-import { DD_TRACE_INIT_BANNER, ROLLUP_EXTERNALS } from "../core/constants";
+import { generateRollupInitBanner } from "../core/banner";
+import { ROLLUP_EXTERNALS } from "../core/constants";
 import { getStringExternals } from "../core/externals";
 import { initTracer } from "../core/init-tracer";
 
@@ -16,6 +17,8 @@ interface ViteConfigOptions {
   debug: boolean;
   logger: ConsolaInstance;
   require: NodeJS.Require;
+  tracerOptions: Parameters<typeof initTracer>[0]["tracerOptions"];
+  tracerOptionsCode: string;
 }
 
 /**
@@ -28,16 +31,23 @@ export function createViteConfig({
   debug,
   logger,
   require,
+  tracerOptions,
+  tracerOptionsCode,
 }: ViteConfigOptions): ViteHook {
   return {
     /**
      * Configure SSR externals and optional init at dev startup.
+     *
+     * @param _config - Existing Vite config.
+     * @param env - Vite command environment.
+     * @returns Updated config overrides.
      */
     config(_config, env) {
       if (autoInit && env.command === "serve") {
         initTracer({
           require,
           debug,
+          tracerOptions,
           debugMessages: {
             init: "[unplugin-datadog-apm] dd-trace initialized",
             tracerProvider:
@@ -57,7 +67,9 @@ export function createViteConfig({
         nitro: autoInit
           ? {
               unenv: { polyfill: [initModulePath] },
-              rollupConfig: { output: { banner: DD_TRACE_INIT_BANNER } },
+              rollupConfig: {
+                output: { banner: generateRollupInitBanner(tracerOptionsCode) },
+              },
             }
           : undefined,
       } as Record<string, unknown>;

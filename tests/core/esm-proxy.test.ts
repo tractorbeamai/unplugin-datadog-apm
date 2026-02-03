@@ -624,7 +624,7 @@ describe("ESM module proxying", () => {
 
       // Dynamic imports are kept as-is, not instrumented at build time
       expect(output.code).toContain("import('pino')");
-      expect(output.code).not.toContain("register");
+      expect(output.code).not.toContain("__dd_esm_proxy__");
     });
   });
 });

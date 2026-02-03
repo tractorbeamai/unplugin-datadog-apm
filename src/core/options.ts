@@ -1,3 +1,5 @@
+import type { Tracer } from "dd-trace";
+
 /**
  * User-facing plugin options.
  */
@@ -8,9 +10,11 @@ export interface Options {
   additionalModules?: string[];
   /** Modules to exclude from instrumentation */
   excludeModules?: string[];
+  /** Options forwarded to dd-trace init */
+  tracerOptions?: Parameters<Tracer["init"]>[0];
   /**
    * Automatically wrap entry points with dd-trace initialization.
-   * When enabled, detected entry points are wrapped to import `unplugin-datadog-apm/init`
+   * When enabled, detected entry points are wrapped to initialize dd-trace
    * before any other code, ensuring dd-trace instruments modules correctly.
    *
    * @default true
@@ -31,6 +35,7 @@ export function resolveOptions(options: Options): OptionsResolved {
     debug: options.debug ?? !!process.env.DD_TRACE_DEBUG,
     additionalModules: options.additionalModules ?? [],
     excludeModules: options.excludeModules ?? [],
+    tracerOptions: options.tracerOptions ?? {},
     autoInit: options.autoInit ?? true,
   };
 }

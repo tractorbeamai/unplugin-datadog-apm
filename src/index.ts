@@ -42,10 +42,11 @@ import {
   isESMFile,
 } from "./core/dd-trace";
 import { generateEntryWrapper } from "./core/entry-wrapper";
-import { generateESMProxy, parseExportsFromSource } from "./core/esm-proxy";
+import { generateESMProxy, resolveExportNames } from "./core/esm-proxy";
 import { getGitMetadata } from "./core/git";
 import { resolveOptions, type Options } from "./core/options";
 import { BUILTINS, getBaseModuleName, resolveModule } from "./core/resolve";
+import { serializeInitOptions } from "./core/serialize";
 import type { ModuleInfo, PluginData } from "./core/types";
 
 const logger = createConsola({ level: -1 }).withTag("datadog");
@@ -62,7 +63,12 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
   rawOptions = {},
 ) => {
   const options = resolveOptions(rawOptions);
-  const { debug, additionalModules, excludeModules, autoInit } = options;
+  const { debug, additionalModules, excludeModules, autoInit, tracerOptions } =
+    options;
+  const tracerOptionsCode = serializeInitOptions(tracerOptions);
+  const iastEnabled =
+    process.env.DD_IAST_ENABLED?.toLowerCase() === "true" ||
+    process.env.DD_IAST_ENABLED === "1";
 
   // Combined set of modules to instrument (from dd-trace + additional).
   const modulesToInstrument = new Set([...ddTraceHooks, ...additionalModules]);
@@ -85,6 +91,57 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
   // If true, the bundler has already injected auto-init via a banner, so we should
   // not wrap entry points.
   let autoInitHandledByBanner = false;
+
+  // Lazy IAST rewriter instance, when enabled.
+  let iastRewriter: {
+    rewrite: (
+      code: string,
+      filename: string,
+      features: string[],
+    ) => { content: string };
+  } | null = null;
+
+  /**
+   * Lazily load the dd-trace IAST rewriter when enabled.
+   *
+   * @returns Rewriter instance or null when unavailable.
+   * @see https://github.com/DataDog/dd-trace-js/blob/master/packages/datadog-esbuild/index.js
+   */
+  const getIastRewriter = () => {
+    if (!iastEnabled) return null;
+    if (iastRewriter) return iastRewriter;
+    try {
+      const module =
+        require("dd-trace/src/appsec/iast/taint-tracking/rewriter") as {
+          getRewriter: () => {
+            rewrite: (
+              code: string,
+              filename: string,
+              features: string[],
+            ) => { content: string };
+          };
+        };
+      iastRewriter = module.getRewriter();
+      return iastRewriter;
+    } catch (error) {
+      logger.warn("IAST rewriter unavailable:", error);
+      return null;
+    }
+  };
+
+  /**
+   * Check if a source file should be rewritten for IAST.
+   *
+   * @param id - Module id or path.
+   * @returns True for eligible application JS files.
+   * @see https://github.com/DataDog/dd-trace-js/blob/master/packages/datadog-esbuild/index.js
+   */
+  const isIastCandidate = (id: string) => {
+    if (id.startsWith(ENTRY_WRAPPER_PREFIX)) return false;
+    if (id.endsWith(ESM_PROXY_SUFFIX)) return false;
+    if (id.includes(NODE_MODULES)) return false;
+    return /\.(cjs|mjs|js)$/.test(id);
+  };
 
   // Track output format for format-aware wrapping.
   let outputFormat: "cjs" | "esm" | "unknown" = "unknown";
@@ -317,13 +374,13 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
     /**
      * Provide module contents for virtual modules and proxies.
      */
-    load(id) {
+    async load(id) {
       // This hook only runs for ids accepted by loadInclude().
       // Handle entry wrapper virtual modules.
       if (id.startsWith(ENTRY_WRAPPER_PREFIX)) {
         const originalPath = id.slice(ENTRY_WRAPPER_PREFIX.length);
         logger.debug(`Generating entry wrapper for: ${originalPath}`);
-        return generateEntryWrapper(originalPath);
+        return generateEntryWrapper(originalPath, tracerOptionsCode);
       }
 
       // Handle ESM proxy modules.
@@ -338,11 +395,10 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
         `Creating ESM proxy: ${info.extractedModule.pkg}@${info.version}`,
       );
 
-      // Read the original module to parse exports.
+      // Read the original module to resolve exports.
       let exportNames: string[];
       try {
-        const code = readFileSync(originalPath, "utf8");
-        exportNames = parseExportsFromSource(code);
+        exportNames = await resolveExportNames(originalPath, "module");
 
         // If we found no exports, fall back to common patterns.
         if (exportNames.length === 0) {
@@ -380,6 +436,15 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
      * Wrap CJS modules so dd-trace can observe their exports.
      */
     transform(code, id) {
+      const cleanId = id.split("?")[0] ?? id;
+      if (iastEnabled && isIastCandidate(cleanId)) {
+        const rewriter = getIastRewriter();
+        if (rewriter) {
+          const rewritten = rewriter.rewrite(code, cleanId, ["iast"]);
+          return { code: rewritten.content, map: null };
+        }
+      }
+
       const cached = moduleInfoCache.get(id);
       if (!cached?.shouldWrap) return null;
 
@@ -428,6 +493,7 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
     esbuild: createEsbuildConfig({
       autoInit,
       logger,
+      tracerOptionsCode,
       setOutputFormat: handleEsbuildOutputFormat,
       setAutoInitHandledByBanner: handleAutoInitHandledByBanner,
     }),
@@ -457,6 +523,8 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
       debug,
       logger,
       require,
+      tracerOptions,
+      tracerOptionsCode,
     }),
   };
 };

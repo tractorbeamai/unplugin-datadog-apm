@@ -18,6 +18,7 @@
  * - DD_TRACE_ENABLED: Enable/disable tracing (default: true)
  *
  * @see https://docs.datadoghq.com/tracing/trace_collection/library_config/nodejs/
+ * @see https://github.com/DataDog/dd-trace-js/blob/master/initialize.mjs
  *
  * @module
  */

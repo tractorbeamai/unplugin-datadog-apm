@@ -23,7 +23,7 @@ pnpm build
 3. Navigate to this example:
 
 ```bash
-cd examples/tanstack-start
+cd examples/vite-nitro-tanstack-start
 ```
 
 ## Development

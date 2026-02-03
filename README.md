@@ -4,7 +4,7 @@
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
 [![CI][ci-src]][ci-href]
 
-Build-time plugin for Datadog APM instrumentation in bundled Node.js applications. Enables `dd-trace` to instrument bundled modules by wrapping them at build time.
+Build-time plugin for Datadog APM instrumentation in bundled Node.js applications. Enables `dd-trace` to instrument bundled modules by wrapping them at build time. This plugin does not instrument anything itself; `dd-trace` still performs the runtime instrumentation, and this plugin only injects the hooks needed for auto-instrumentation to work in a bundle.
 
 ## Why?
 
@@ -35,6 +35,11 @@ DatadogAPM({
   // Enable debug logging (default: !!process.env.DD_TRACE_DEBUG)
   debug: false,
 
+  // Options forwarded to dd-trace init
+  tracerOptions: {
+    service: "my-service",
+  },
+
   // Additional modules to instrument beyond dd-trace defaults
   additionalModules: ["my-custom-module"],
 
@@ -54,6 +59,7 @@ The initialization module (`unplugin-datadog-apm/init`):
 - Initializes dd-trace
 - Registers TracerProvider with OpenTelemetry API (so `trace.getActiveSpan()` works)
 - Configures HTTP instrumentation with sensible defaults
+- Uses `tracerOptions` from the plugin config when auto-init is enabled
 
 ## Usage
 
@@ -80,7 +86,13 @@ import DatadogAPM from "unplugin-datadog-apm/rollup";
 
 export default {
   plugins: [DatadogAPM()],
-  external: ["dd-trace", "dc-polyfill", "import-in-the-middle"],
+  external: [
+    "dd-trace",
+    "dc-polyfill",
+    "import-in-the-middle",
+    "@opentelemetry/api",
+    "unplugin-datadog-apm",
+  ],
 };
 ```
 
@@ -109,7 +121,13 @@ import DatadogAPM from "unplugin-datadog-apm/esbuild";
 
 build({
   plugins: [DatadogAPM()],
-  external: ["dd-trace", "dc-polyfill", "import-in-the-middle"],
+  external: [
+    "dd-trace",
+    "dc-polyfill",
+    "import-in-the-middle",
+    "@opentelemetry/api",
+    "unplugin-datadog-apm",
+  ],
 });
 ```
 
@@ -124,7 +142,13 @@ import DatadogAPM from "unplugin-datadog-apm/webpack";
 
 export default {
   plugins: [DatadogAPM()],
-  externals: ["dd-trace", "dc-polyfill", "import-in-the-middle"],
+  externals: [
+    "dd-trace",
+    "dc-polyfill",
+    "import-in-the-middle",
+    "@opentelemetry/api",
+    "unplugin-datadog-apm",
+  ],
 };
 ```
 
@@ -146,9 +170,13 @@ export default {
 
 ## Important Notes
 
-- **Externalize dd-trace**: You must externalize `dd-trace`, `dc-polyfill`, and `import-in-the-middle` in your bundler config. These are runtime dependencies that should not be bundled.
+- **Externalize runtime deps**: You must externalize `dd-trace`, `dc-polyfill`, `import-in-the-middle`, `@opentelemetry/api`, and `unplugin-datadog-apm` in your bundler config. These are runtime dependencies that should not be bundled.
+- **esbuild minify**: If you use `minify: true` with esbuild, you must also set `keepNames: true` or the plugin will refuse to bundle (matches dd-trace expectations).
+- **esbuild ESM + CJS deps**: esbuild ESM output can emit dynamic-require shims for CommonJS dependencies. Node ESM refuses to execute those shims (for example, `express`), so prefer CJS output or ensure dependencies are ESM-only.
 - **Plugin order**: The plugin uses `enforce: 'pre'` to run before other transforms.
 - **Module detection**: The plugin uses dd-trace's internal utilities to detect which modules are instrumentable and whether they're ESM or CommonJS.
+- **Git metadata**: When git metadata is available at build time, the plugin injects `DD_GIT_REPOSITORY_URL` and `DD_GIT_COMMIT_SHA` into the output banner.
+- **IAST rewrite**: When `DD_IAST_ENABLED=true`, the plugin rewrites application JS files using dd-trace's IAST rewriter.
 
 ## Known Limitations
 
@@ -168,7 +196,7 @@ node --import dd-trace/initialize dist/server.mjs
 
 | Bundler  | CJS Output | ESM Output          |
 | -------- | ---------- | ------------------- |
-| esbuild  | Works      | Works               |
+| esbuild  | Works      | Limited (CJS deps)  |
 | Rollup   | Works      | Works               |
 | Rolldown | Works      | Works               |
 | Vite     | N/A        | Works               |
@@ -179,7 +207,8 @@ node --import dd-trace/initialize dist/server.mjs
 
 See the [examples](./examples) directory for complete working examples:
 
-- [TanStack Start + Vite + Nitro](./examples/vite-nitro-tanstack-start)
+- [Vite + Nitro + TanStack Start](./examples/vite-nitro-tanstack-start)
+- [esbuild + Express](./examples/esbuild-express)
 
 ## How It Works
 
@@ -188,8 +217,8 @@ See the [examples](./examples) directory for complete working examples:
 The plugin uses the bundler's `isEntry` flag to automatically detect entry points. Detected entries are wrapped with virtual modules that import the init code first:
 
 ```js
-// Generated wrapper for each entry point
-import "unplugin-datadog-apm/init";
+// Generated wrapper for each entry point (init logic inlined)
+import ddTrace from "dd-trace";
 
 export * from "./original-entry";
 export { default } from "./original-entry";

@@ -7,7 +7,21 @@ import { describe, expect, it } from "vitest";
 import {
   generateCJSInitBanner,
   generateESMInitBanner,
+  generateRollupInitBanner,
 } from "../../src/core/banner";
+
+describe("generateRollupInitBanner", () => {
+  it("includes the auto-injected comment", () => {
+    const banner = generateRollupInitBanner("undefined");
+    expect(banner).toContain("Auto-injected");
+  });
+
+  it("includes serialized init options", () => {
+    const banner = generateRollupInitBanner("{foo:1}");
+    expect(banner).toContain("const __ddTraceInitOptions = {foo:1};");
+    expect(banner).toContain("__tracer.init(__ddTraceInitOptions);");
+  });
+});
 
 describe("banner generation", () => {
   describe("generateESMInitBanner", () => {
@@ -20,7 +34,13 @@ describe("banner generation", () => {
           'import { createRequire as __createRequire } from "node:module"',
         );
         expect(banner).toContain(
-          "const require = __createRequire(import.meta.url)",
+          'const __ddFilename = typeof __filename === "string" ? __filename : __fileURLToPath(import.meta.url);',
+        );
+        expect(banner).toContain(
+          "const __ddRequire = __createRequire(__ddFilename);",
+        );
+        expect(banner).toContain(
+          'const __ddDirname = typeof __dirname === "string" ? __dirname : __dirnameFn(__ddFilename);',
         );
       });
 
@@ -59,7 +79,9 @@ describe("banner generation", () => {
       it("includes import.meta.url as base URL", () => {
         const banner = generateESMInitBanner(true);
 
-        expect(banner).toContain("const __baseUrl = import.meta.url");
+        expect(banner).toContain(
+          'const __baseUrl = typeof __filename === "string" ? __pathToFileURL(__filename) : import.meta.url;',
+        );
       });
 
       it("includes IITM exclusion patterns", () => {
@@ -73,8 +95,8 @@ describe("banner generation", () => {
       it("includes dd-trace initialization code", () => {
         const banner = generateESMInitBanner(true);
 
-        expect(banner).toContain('require("dd-trace")');
-        expect(banner).toContain("__tracer.init()");
+        expect(banner).toContain("ddTrace");
+        expect(banner).toContain("__tracer.init(__ddTraceInitOptions)");
         expect(banner).toContain("new __tracer.TracerProvider()");
         expect(banner).toContain("__tracerProvider.register()");
       });
@@ -83,7 +105,7 @@ describe("banner generation", () => {
         const banner = generateESMInitBanner(true);
 
         expect(banner).toContain('typeof __Module.register === "function"');
-        expect(banner).toContain('require.resolve("dd-trace/loader-hook.mjs")');
+        expect(banner).toContain('"dd-trace/loader-hook.mjs"');
         expect(banner).toContain("exclude: __iitmExclusions");
       });
 
@@ -117,6 +139,10 @@ describe("banner generation", () => {
       const banner = generateCJSInitBanner();
 
       expect(banner).toContain('const __Module = require("node:module")');
+      expect(banner).toContain("const { createRequire: __createRequire }");
+      expect(banner).toContain(
+        "const __ddRequire = __createRequire(__filename)",
+      );
     });
 
     it("includes pathToFileURL for base URL", () => {
@@ -139,7 +165,7 @@ describe("banner generation", () => {
       const banner = generateCJSInitBanner();
 
       expect(banner).toContain('require("dd-trace")');
-      expect(banner).toContain("__tracer.init()");
+      expect(banner).toContain("__tracer.init(__ddTraceInitOptions)");
       expect(banner).toContain("new __tracer.TracerProvider()");
     });
 

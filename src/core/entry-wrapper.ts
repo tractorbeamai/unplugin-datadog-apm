@@ -9,7 +9,7 @@
 
 import { readFileSync } from "node:fs";
 
-import { INIT_MODULE } from "./constants";
+import { generateESMInitBanner } from "./banner";
 import { parseExportsFromSource } from "./esm-proxy";
 
 /**
@@ -18,7 +18,10 @@ import { parseExportsFromSource } from "./esm-proxy";
  * @param originalPath - Absolute path to the real entry file.
  * @returns Wrapper module source that re-exports the entry exports.
  */
-export function generateEntryWrapper(originalPath: string): string {
+export function generateEntryWrapper(
+  originalPath: string,
+  tracerOptionsCode: string,
+): string {
   // Read the original to detect its exports.
   let hasDefault = false;
 
@@ -30,9 +33,10 @@ export function generateEntryWrapper(originalPath: string): string {
     // If we can't parse, just re-export everything
   }
 
+  const initCode = generateESMInitBanner(true, undefined, tracerOptionsCode);
   const lines = [
     `// Auto-generated entry wrapper by unplugin-datadog-apm`,
-    `import ${JSON.stringify(INIT_MODULE)};`,
+    initCode,
     `export * from ${JSON.stringify(originalPath)};`,
   ];
 

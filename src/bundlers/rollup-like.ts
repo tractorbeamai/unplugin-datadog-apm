@@ -25,6 +25,7 @@ interface RollupLikeConfigOptions {
  * Normalize rollup format strings to an ESM flag.
  *
  * @param format - Rollup output format string.
+ * @returns True when the format is ESM.
  */
 function isEsmFormat(format: string | undefined): boolean {
   return format === "es" || format === "esm";
@@ -55,6 +56,8 @@ export function createRollupLikeConfig({
   return {
     /**
      * Inject dd-trace externals into the bundler options.
+     *
+     * @param options - Rollup input options to mutate.
      */
     options(options) {
       setUsesRenderChunkWrapperConversion(true);
@@ -65,6 +68,11 @@ export function createRollupLikeConfig({
     outputOptions: bundlerName === "rollup" ? handleOutputOptions : undefined,
     /**
      * Convert CJS wrapper output when bundling to ESM.
+     *
+     * @param code - Chunk code to transform.
+     * @param _chunk - Rollup chunk metadata.
+     * @param options - Render options with format.
+     * @returns Transformed chunk or null when unchanged.
      */
     renderChunk(code, _chunk, options) {
       const format = options.format ?? "";
