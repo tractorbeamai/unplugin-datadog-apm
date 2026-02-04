@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { build } from "vite";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import vitePlugin from "../../src/vite";
 import {

@@ -26,61 +26,55 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./dist/index.mjs",
-    "./api": "./dist/api.mjs",
-    "./esbuild": "./dist/esbuild.mjs",
-    "./init": "./dist/init.mjs",
-    "./nitro-plugin": "./dist/nitro-plugin.mjs",
-    "./register": "./dist/register.mjs",
-    "./register-helpers": "./dist/register-helpers.mjs",
-    "./rolldown": "./dist/rolldown.mjs",
-    "./rollup": "./dist/rollup.mjs",
-    "./rspack": "./dist/rspack.mjs",
-    "./vite": "./dist/vite.mjs",
-    "./webpack": "./dist/webpack.mjs",
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./api": {
+      "types": "./dist/api.d.mts",
+      "default": "./dist/api.mjs"
+    },
+    "./esbuild": {
+      "types": "./dist/esbuild.d.mts",
+      "default": "./dist/esbuild.mjs"
+    },
+    "./init": {
+      "types": "./dist/init.d.mts",
+      "default": "./dist/init.mjs"
+    },
+    "./nitro-plugin": {
+      "types": "./dist/nitro-plugin.d.mts",
+      "default": "./dist/nitro-plugin.mjs"
+    },
+    "./register": {
+      "types": "./dist/register.d.mts",
+      "default": "./dist/register.mjs"
+    },
+    "./register-helpers": {
+      "types": "./dist/register-helpers.d.mts",
+      "default": "./dist/register-helpers.mjs"
+    },
+    "./rolldown": {
+      "types": "./dist/rolldown.d.mts",
+      "default": "./dist/rolldown.mjs"
+    },
+    "./rollup": {
+      "types": "./dist/rollup.d.mts",
+      "default": "./dist/rollup.mjs"
+    },
+    "./rspack": {
+      "types": "./dist/rspack.d.mts",
+      "default": "./dist/rspack.mjs"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.mts",
+      "default": "./dist/vite.mjs"
+    },
+    "./webpack": {
+      "types": "./dist/webpack.d.mts",
+      "default": "./dist/webpack.mjs"
+    },
     "./package.json": "./package.json"
-  },
-  "main": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "typesVersions": {
-    "*": {
-      ".": [
-        "./dist/index.d.mts"
-      ],
-      "api": [
-        "./dist/api.d.mts"
-      ],
-      "esbuild": [
-        "./dist/esbuild.d.mts"
-      ],
-      "init": [
-        "./dist/init.d.mts"
-      ],
-      "nitro-plugin": [
-        "./dist/nitro-plugin.d.mts"
-      ],
-      "register": [
-        "./dist/register.d.mts"
-      ],
-      "register-helpers": [
-        "./dist/register-helpers.d.mts"
-      ],
-      "rolldown": [
-        "./dist/rolldown.d.mts"
-      ],
-      "rollup": [
-        "./dist/rollup.d.mts"
-      ],
-      "rspack": [
-        "./dist/rspack.d.mts"
-      ],
-      "vite": [
-        "./dist/vite.d.mts"
-      ],
-      "webpack": [
-        "./dist/webpack.d.mts"
-      ]
-    }
   },
   "files": [
     "dist"
@@ -96,7 +90,7 @@
     "lint:types": "tsc --noEmit",
     "prepublishOnly": "pnpm run build",
     "release": "pnpm build && changeset publish",
-    "test": "vitest",
+    "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
   "prettier": "@tractorbeam/prettier-config",
