@@ -33,6 +33,10 @@ tracer.init({
   startupLogs: false,
 });
 
+// Disable URL instrumentation to work around Node.js 22+ private field error
+// @see KNOWN_ISSUES.md "dd-trace URL Instrumentation Error (Node.js 22+)"
+tracer.use("url", false);
+
 // Example: Configure HTTP integration with custom hooks
 tracer.use("http", {
   client: {

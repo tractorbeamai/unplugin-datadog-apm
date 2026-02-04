@@ -25,7 +25,15 @@ dd-trace's URL instrumentation attempts to wrap getters on the `URL` class, but 
 
 ### Workaround
 
-None currently. This requires an upstream fix in dd-trace.
+Disable URL instrumentation in your register file:
+
+```js
+tracer.use("url", false);
+```
+
+This prevents the error but means URL-related spans won't be captured. The nitro example (`examples/vite-nitro-tanstack-start/register.mjs`) demonstrates this workaround.
+
+An upstream fix in dd-trace is still needed for full functionality.
 
 ### Tracking
 
