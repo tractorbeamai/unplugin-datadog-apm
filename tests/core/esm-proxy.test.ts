@@ -628,3 +628,62 @@ describe("ESM module proxying", () => {
     });
   });
 });
+
+describe("ESM proxy import externalization", () => {
+  const temp = useTempDir();
+
+  it("ESM proxy imports use bare specifiers (not absolute paths)", async () => {
+    createFixture(temp.dir, {
+      "index.js": `import { fetch } from 'undici'; export { fetch };`,
+      ...createUndiciFixture(),
+    });
+
+    const bundle = await rollup({
+      input: path.join(temp.dir, "index.js"),
+      plugins: [
+        rollupPlugin({ debug: false }),
+        nodeResolve({ rootDir: temp.dir }),
+      ],
+      external: ["import-in-the-middle/lib/register.js", "undici"],
+    });
+
+    const result = await bundle.generate({ format: "es" });
+    const [output] = result.output;
+
+    // The ESM proxy should import using the bare specifier "undici"
+    // not an absolute path like "/path/to/node_modules/undici/index.js"
+    // Rollup uses single quotes, so check for either quote style
+    expect(output.code).toMatch(/from ['"]undici['"]/);
+    expect(output.code).not.toContain("node_modules/undici/index.js");
+  });
+
+  it("ESM proxy imports are marked external to prevent rewriting by other plugins", async () => {
+    // This test verifies the fix for Nitro's externals plugin adding
+    // trailing slashes to bare specifiers (e.g., "pg" -> "pg/")
+    createFixture(temp.dir, {
+      "index.js": `import { fetch } from 'undici'; export { fetch };`,
+      ...createUndiciFixture(),
+    });
+
+    const bundle = await rollup({
+      input: path.join(temp.dir, "index.js"),
+      plugins: [
+        rollupPlugin({ debug: false }),
+        nodeResolve({ rootDir: temp.dir }),
+      ],
+      // Note: undici is NOT in the external list here, but the plugin
+      // should still mark ESM proxy imports as external
+      external: ["import-in-the-middle/lib/register.js"],
+    });
+
+    const result = await bundle.generate({ format: "es" });
+    const [output] = result.output;
+
+    // The output should still have bare specifier imports (not bundled/inlined)
+    // because our plugin marks them as external in resolveId
+    expect(output.code).toMatch(/from ['"]undici['"]/);
+
+    // Verify the import doesn't have a trailing slash (the bug we fixed)
+    expect(output.code).not.toMatch(/from ['"]undici\/['"]/);
+  });
+});

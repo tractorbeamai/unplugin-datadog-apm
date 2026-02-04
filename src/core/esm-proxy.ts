@@ -384,7 +384,7 @@ export function generateESMProxy(
   const moduleUrl = isBuiltin
     ? rawImportPath
     : pathToFileURL(originalPath).href;
-  const importPath = isBuiltin ? rawImportPath : originalPath;
+  const importPath = rawImportPath;
 
   // Generate setter/getter wiring so import-in-the-middle can
   // track updates.
