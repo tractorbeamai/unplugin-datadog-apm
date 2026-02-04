@@ -197,14 +197,13 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
         return importee;
       }
 
-
       // When an ESM proxy module imports its target package, mark it as external
       // to prevent other plugins (like Nitro's externals) from rewriting the import.
       // This is critical because Nitro's externals plugin can mangle bare specifiers
       // (e.g., "pg" -> "pg/") which breaks Node.js module resolution.
       if (importer.endsWith(ESM_PROXY_SUFFIX)) {
         const proxyInfo = esmProxyInfoByProxyId.get(importer);
-        if (proxyInfo && importee === proxyInfo.rawImportPath) {
+        if (importee === proxyInfo?.rawImportPath) {
           return { id: importee, external: true };
         }
       }
