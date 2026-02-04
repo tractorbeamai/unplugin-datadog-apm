@@ -1,5 +1,13 @@
 # example-tanstack-start
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies [30bc266]
+- Updated dependencies [30bc266]
+  - unplugin-datadog-apm@0.2.2
+
 ## 0.0.3
 
 ### Patch Changes
