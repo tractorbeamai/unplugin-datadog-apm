@@ -1,9 +1,10 @@
 /**
  * dd-trace initialization module.
  *
- * This module should run BEFORE any HTTP modules are imported.
+ * This module should run BEFORE any instrumented modules are imported.
  * For Vite/Nitro, this is automatically configured.
- * For other bundlers, entry points are wrapped to import this module first.
+ * For other bundlers, entry points are wrapped with inline initialization code.
+ * This module is used by Vite/Nitro's unenv polyfill mechanism.
  *
  * Based on dd-trace's initialize.mjs, this module:
  * 1. Only initializes on the main thread
@@ -36,12 +37,6 @@ const require = createRequire(import.meta.url);
 initTracer({
   require,
   debug: Boolean(process.env.DD_TRACE_DEBUG),
-  debugMessages: {
-    init: "[unplugin-datadog-apm] dd-trace initialized",
-    tracerProvider:
-      "[unplugin-datadog-apm] TracerProvider registered with OTel API",
-    loaderHook: "[unplugin-datadog-apm] ESM loader hook registered",
-  },
   registerLoaderHook: true,
   moduleNamespace: Module,
   loaderHookBaseUrl: import.meta.url,

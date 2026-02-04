@@ -3,7 +3,7 @@
  *
  * This plugin runs once during Nitro server startup, BEFORE any request handlers
  * are loaded. This allows dd-trace to intercept module loading and instrument
- * HTTP clients, databases, etc.
+ * supported modules.
  *
  * Works in both dev mode and production builds.
  *
@@ -25,10 +25,5 @@ export default function datadogApmPlugin(): void {
   initTracer({
     require,
     debug: Boolean(process.env.DD_TRACE_DEBUG),
-    debugMessages: {
-      init: "[unplugin-datadog-apm] dd-trace initialized in Nitro",
-      tracerProvider:
-        "[unplugin-datadog-apm] TracerProvider registered with OTel API",
-    },
   });
 }

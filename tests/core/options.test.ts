@@ -84,26 +84,6 @@ describe("resolveOptions", () => {
     });
   });
 
-  describe("tracerOptions option", () => {
-    it("defaults to empty object", () => {
-      const result = resolveOptions({});
-      expect(result.tracerOptions).toEqual({});
-    });
-
-    it("preserves provided options", () => {
-      const result = resolveOptions({
-        tracerOptions: {
-          service: "test-service",
-          samplingRules: [{ name: /health/, sampleRate: 0.5 }],
-        },
-      });
-      expect(result.tracerOptions).toEqual({
-        service: "test-service",
-        samplingRules: [{ name: /health/, sampleRate: 0.5 }],
-      });
-    });
-  });
-
   describe("combined options", () => {
     it("resolves all options together", () => {
       const options: Options = {
@@ -117,8 +97,6 @@ describe("resolveOptions", () => {
         debug: true,
         additionalModules: ["custom"],
         excludeModules: ["pino"],
-        tracerOptions: {},
-        autoInit: true,
       });
     });
 
@@ -129,8 +107,6 @@ describe("resolveOptions", () => {
         debug: true,
         additionalModules: [],
         excludeModules: [],
-        tracerOptions: {},
-        autoInit: true,
       });
     });
   });

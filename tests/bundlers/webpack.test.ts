@@ -1,22 +1,26 @@
 /**
  * Tests for webpack integration.
  * Verifies CJS module wrapping and plugin functionality.
+ *
+ * Uses shared test helpers for common patterns (plugin metadata, excludeModules,
+ * additionalModules) while keeping webpack-specific tests (function externals,
+ * ESM builds, multiple modules) in this file.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
-import webpack from "webpack";
+import type webpack from "webpack";
 
 import webpackPlugin from "../../src/webpack";
 import {
   expectIitmProxyInjected,
   expectInstrumented,
-  expectNotInstrumented,
 } from "../helpers/assertions";
+import { describeSharedTests } from "../helpers/bundler-tests";
+import { runWebpack } from "../helpers/bundlers";
 import {
   combineFixtures,
-  createCustomCjsFixture,
   createIoredisFixture,
   createPinoFixture,
   createUndiciFixture,
@@ -24,41 +28,59 @@ import {
 import { useTempDir } from "../helpers/temp-dir";
 import { createFixture } from "../utils";
 
-function runWebpack(config: webpack.Configuration): Promise<webpack.Stats> {
-  return new Promise((resolve, reject) => {
-    webpack(config, (err, stats) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      if (!stats) {
-        reject(new Error("No stats returned"));
-        return;
-      }
-      if (stats.hasErrors()) {
-        const info = stats.toJson();
-        reject(new Error(info.errors?.map((e) => e.message).join("\n")));
-        return;
-      }
-      resolve(stats);
-    });
-  });
-}
-
 describe("unplugin-datadog-apm (webpack)", () => {
   const temp = useTempDir();
 
-  describe("plugin metadata", () => {
-    it("creates a plugin when called", () => {
-      const plugin = webpackPlugin();
-      expect(plugin).toBeDefined();
-      expect(typeof plugin).toBe("object");
-    });
+  // Shared tests for plugin metadata, excludeModules, and additionalModules
+  describeSharedTests({
+    bundlerName: "webpack",
+    createPlugin: webpackPlugin,
+    getTemp: () => temp,
+    runExcludeModulesTest: async ({ tempDir, plugin }) => {
+      await runWebpack({
+        mode: "production",
+        context: tempDir,
+        entry: "./index.js",
+        output: {
+          path: path.join(tempDir, "dist"),
+          filename: "bundle.js",
+          library: { type: "commonjs2" },
+        },
+        target: "node",
+        plugins: [plugin as webpack.WebpackPluginInstance],
+        optimization: {
+          minimize: false,
+        },
+        resolve: {
+          modules: [path.join(tempDir, "node_modules"), "node_modules"],
+        },
+      });
 
-    it("accepts options", () => {
-      const plugin = webpackPlugin({ debug: true });
-      expect(plugin).toBeDefined();
-    });
+      return readFileSync(path.join(tempDir, "dist/bundle.js"), "utf8");
+    },
+    runAdditionalModulesTest: async ({ tempDir, plugin }) => {
+      await runWebpack({
+        mode: "production",
+        context: tempDir,
+        entry: "./index.js",
+        output: {
+          path: path.join(tempDir, "dist"),
+          filename: "bundle.js",
+          library: { type: "commonjs2" },
+        },
+        target: "node",
+        plugins: [plugin as webpack.WebpackPluginInstance],
+        externals: ["dc-polyfill"],
+        optimization: {
+          minimize: false,
+        },
+        resolve: {
+          modules: [path.join(tempDir, "node_modules"), "node_modules"],
+        },
+      });
+
+      return readFileSync(path.join(tempDir, "dist/bundle.js"), "utf8");
+    },
   });
 
   describe("CJS builds", () => {
@@ -78,7 +100,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
           library: { type: "commonjs2" },
         },
         target: "node",
-        plugins: [webpackPlugin({ autoInit: false })],
+        plugins: [webpackPlugin()],
         externals: ["dc-polyfill"],
         optimization: {
           minimize: false,
@@ -96,78 +118,6 @@ describe("unplugin-datadog-apm (webpack)", () => {
       // Should wrap CJS module with dd-trace channel
       expectInstrumented(output);
       expect(output).toContain("dc-polyfill");
-    });
-
-    it("respects excludeModules option", async () => {
-      createFixture(temp.dir, {
-        "index.js": `const pino = require('pino'); module.exports = pino;`,
-        ...createPinoFixture(),
-      });
-
-      await runWebpack({
-        mode: "production",
-        context: temp.dir,
-        entry: "./index.js",
-        output: {
-          path: path.join(temp.dir, "dist"),
-          filename: "bundle.js",
-          library: { type: "commonjs2" },
-        },
-        target: "node",
-        plugins: [webpackPlugin({ autoInit: false, excludeModules: ["pino"] })],
-        optimization: {
-          minimize: false,
-        },
-        resolve: {
-          modules: [path.join(temp.dir, "node_modules"), "node_modules"],
-        },
-      });
-
-      const output = readFileSync(
-        path.join(temp.dir, "dist/bundle.js"),
-        "utf8",
-      );
-
-      // Should NOT wrap excluded module
-      expectNotInstrumented(output);
-    });
-
-    it("respects additionalModules option", async () => {
-      createFixture(temp.dir, {
-        "index.js": `const custom = require('custom-pkg'); module.exports = custom;`,
-        ...createCustomCjsFixture("custom-pkg"),
-      });
-
-      await runWebpack({
-        mode: "production",
-        context: temp.dir,
-        entry: "./index.js",
-        output: {
-          path: path.join(temp.dir, "dist"),
-          filename: "bundle.js",
-          library: { type: "commonjs2" },
-        },
-        target: "node",
-        plugins: [
-          webpackPlugin({ autoInit: false, additionalModules: ["custom-pkg"] }),
-        ],
-        externals: ["dc-polyfill"],
-        optimization: {
-          minimize: false,
-        },
-        resolve: {
-          modules: [path.join(temp.dir, "node_modules"), "node_modules"],
-        },
-      });
-
-      const output = readFileSync(
-        path.join(temp.dir, "dist/bundle.js"),
-        "utf8",
-      );
-
-      // Should wrap additional module
-      expectInstrumented(output);
-      expect(output).toContain("custom-pkg");
     });
 
     it("preserves function-based externals alongside plugin externals", async () => {
@@ -193,7 +143,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
           library: { type: "commonjs2" },
         },
         target: "node",
-        plugins: [webpackPlugin({ autoInit: false })],
+        plugins: [webpackPlugin()],
         // Test with function-based externals (webpack supports this format)
         externals: [
           ({ request }, callback) => {
@@ -251,7 +201,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
           library: { type: "module" },
         },
         target: "node",
-        plugins: [webpackPlugin({ autoInit: false })],
+        plugins: [webpackPlugin()],
         externals: ["import-in-the-middle/lib/register.js"],
         experiments: {
           outputModule: true,
@@ -290,9 +240,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
           library: { type: "module" },
         },
         target: "node",
-        plugins: [
-          webpackPlugin({ autoInit: false, excludeModules: ["undici"] }),
-        ],
+        plugins: [webpackPlugin({ excludeModules: ["undici"] })],
         experiments: {
           outputModule: true,
         },
@@ -330,7 +278,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
           library: { type: "module" },
         },
         target: "node",
-        plugins: [webpackPlugin({ autoInit: false })],
+        plugins: [webpackPlugin()],
         externals: ["dc-polyfill"],
         experiments: {
           outputModule: true,
@@ -375,7 +323,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
           library: { type: "commonjs2" },
         },
         target: "node",
-        plugins: [webpackPlugin({ autoInit: false })],
+        plugins: [webpackPlugin()],
         externals: ["dc-polyfill"],
         optimization: {
           minimize: false,

@@ -11,6 +11,8 @@ const config: TsdownOptions = {
     esbuild: "src/esbuild.ts",
     init: "src/init.ts",
     "nitro-plugin": "src/nitro-plugin.ts",
+    register: "src/register.ts",
+    "register-helpers": "src/register-helpers.ts",
     rolldown: "src/rolldown.ts",
     rollup: "src/rollup.ts",
     rspack: "src/rspack.ts",

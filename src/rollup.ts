@@ -21,4 +21,3 @@ import { DatadogAPM } from "./index";
  */
 const rollup: typeof DatadogAPM.rollup = DatadogAPM.rollup;
 export default rollup;
-export { rollup as "module.exports" };

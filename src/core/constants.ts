@@ -22,15 +22,6 @@ export const IITM_EXCLUSION_PATTERNS: RegExp[] = [
   /@anthropic-ai\/sdk\/_shims/,
 ];
 
-/**
- * Serialize the exclusions into a JS code literal for injection.
- *
- * @returns JavaScript array literal of regex source strings.
- */
-export function serializeExclusionsToCode(): string {
-  return `[${IITM_EXCLUSION_PATTERNS.map((r) => r.toString()).join(", ")}]`;
-}
-
 // -----------------------------------------------------------------------------
 // Module Identifiers
 // -----------------------------------------------------------------------------
@@ -41,11 +32,14 @@ export const CHANNEL = "dd-trace:bundler:load";
 /** Suffix for ESM proxy virtual modules. */
 export const ESM_PROXY_SUFFIX = "?__dd_esm_proxy__";
 
-/** Prefix for entry wrapper virtual modules. */
-export const ENTRY_WRAPPER_PREFIX = "\0dd-entry:";
-
-/** Module specifier for the init entry point. */
+/** Module specifier for the init entry point (legacy, kept for compatibility). */
 export const INIT_MODULE = "unplugin-datadog-apm/init";
+
+/** Module specifier for the --import register helper. */
+export const REGISTER_MODULE = "unplugin-datadog-apm/register";
+
+/** Module specifier for the register helpers. */
+export const REGISTER_HELPERS_MODULE = "unplugin-datadog-apm/register-helpers";
 
 /** Path segment for detecting node_modules. */
 export const NODE_MODULES = "node_modules/";
@@ -55,12 +49,12 @@ export const NODE_MODULES = "node_modules/";
 // -----------------------------------------------------------------------------
 
 /**
- * Modules that must stay external in esbuild builds.
+ * Runtime dependencies that should never be bundled.
  *
- * esbuild treats RegExp externals differently from rollup, so this list is
- * intentionally string-only.
+ * This list is the single source of truth; bundler-specific external formats
+ * (string-only vs regex-capable) are derived from it below.
  */
-export const ESBUILD_EXTERNALS = [
+export const RUNTIME_EXTERNALS = [
   "dd-trace",
   "@opentelemetry/api",
   "@openfeature/core",
@@ -70,17 +64,51 @@ export const ESBUILD_EXTERNALS = [
 ] as const;
 
 /**
+ * Known subpath imports that can appear in generated output or runtime init code.
+ *
+ * These are safe to externalize everywhere and help bundlers that only accept
+ * string externals (e.g., esbuild, Vite SSR).
+ */
+function buildRuntimeExternalSubpaths(): readonly string[] {
+  return [
+    INIT_MODULE,
+    REGISTER_MODULE,
+    REGISTER_HELPERS_MODULE,
+    "dd-trace/loader-hook.mjs",
+    "import-in-the-middle/lib/register.js",
+    "import-in-the-middle/lib/get-exports.mjs",
+  ];
+}
+
+export const RUNTIME_EXTERNAL_SUBPATHS: readonly string[] =
+  buildRuntimeExternalSubpaths();
+
+/**
+ * String-only externals list (base packages + known subpaths).
+ */
+function buildStringExternals(): readonly string[] {
+  return [...RUNTIME_EXTERNALS, ...RUNTIME_EXTERNAL_SUBPATHS];
+}
+
+export const STRING_EXTERNALS: readonly string[] = buildStringExternals();
+
+/**
+ * String-only externals list for bundlers that do not support RegExp externals.
+ *
+ * This is safe for esbuild and also useful for Vite SSR config, which expects
+ * string externals.
+ */
+export const STRING_ONLY_EXTERNALS: readonly string[] = STRING_EXTERNALS;
+
+/**
  * Modules that must stay external in rollup-style builds.
  *
  * Regex patterns handle subpath imports that should not be bundled.
  */
 export const ROLLUP_EXTERNALS: (string | RegExp)[] = [
-  "dd-trace",
+  ...STRING_EXTERNALS,
   /^dd-trace\//,
-  "@opentelemetry/api",
-  "dc-polyfill",
-  "import-in-the-middle",
+  /^@openfeature\/core\//,
   /^import-in-the-middle\//,
-  "unplugin-datadog-apm",
   /^unplugin-datadog-apm\//,
 ];

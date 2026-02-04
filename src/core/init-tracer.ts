@@ -1,21 +1,11 @@
 import type { Tracer } from "dd-trace";
 
 /**
- * Human-readable debug messages for the tracer init flow.
- */
-interface DebugMessages {
-  init: string;
-  tracerProvider: string;
-  loaderHook?: string;
-}
-
-/**
  * Runtime options for initializing dd-trace.
  */
 export interface InitTracerOptions {
   require: NodeJS.Require;
   debug: boolean;
-  debugMessages: DebugMessages;
   tracerOptions?: Parameters<Tracer["init"]>[0];
   registerLoaderHook?: boolean;
   moduleNamespace?: {
@@ -47,11 +37,7 @@ function logDebug(enabled: boolean, message: string | undefined): void {
  * Call this once at process startup before application code loads.
  *
  * @example
- * initTracer({
- *   require,
- *   debug: false,
- *   debugMessages: { init: "", tracerProvider: "" },
- * });
+ * initTracer({ require, debug: false });
  * @see https://github.com/DataDog/dd-trace-js/blob/master/packages/datadog-esbuild/index.js
  * @see https://github.com/DataDog/dd-trace-js/blob/master/initialize.mjs
  */
@@ -59,12 +45,19 @@ export function initTracer(options: InitTracerOptions): void {
   if (options.isMainThread === false) return;
 
   const tracer = options.require("dd-trace") as Tracer;
-  tracer.init(options.tracerOptions);
-  logDebug(options.debug, options.debugMessages.init);
+  if (options.tracerOptions === undefined) {
+    tracer.init();
+  } else {
+    tracer.init(options.tracerOptions);
+  }
+  logDebug(options.debug, "[unplugin-datadog-apm] dd-trace initialized");
 
   const tracerProvider = new tracer.TracerProvider();
   tracerProvider.register();
-  logDebug(options.debug, options.debugMessages.tracerProvider);
+  logDebug(
+    options.debug,
+    "[unplugin-datadog-apm] TracerProvider registered with OTel API",
+  );
 
   if (
     options.registerLoaderHook &&
@@ -82,6 +75,9 @@ export function initTracer(options: InitTracerOptions): void {
         data: { exclude: options.iitmExclusions ?? [] },
       },
     );
-    logDebug(options.debug, options.debugMessages.loaderHook);
+    logDebug(
+      options.debug,
+      "[unplugin-datadog-apm] ESM loader hook registered",
+    );
   }
 }

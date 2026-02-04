@@ -21,4 +21,3 @@ import { DatadogAPM } from "./index";
  */
 const rspack: typeof DatadogAPM.rspack = DatadogAPM.rspack;
 export default rspack;
-export { rspack as "module.exports" };

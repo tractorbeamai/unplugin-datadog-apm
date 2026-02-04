@@ -19,4 +19,3 @@ import { DatadogAPM } from "./index";
  */
 const esbuild: typeof DatadogAPM.esbuild = DatadogAPM.esbuild;
 export default esbuild;
-export { esbuild as "module.exports" };

@@ -1,7 +1,8 @@
 import type { ConsolaInstance } from "consola";
 
-import { generateCJSInitBanner, generateESMInitBanner } from "../core/banner";
-import { ESBUILD_EXTERNALS } from "../core/constants";
+import { generateGitMetadataBanner } from "../core/banner";
+import { STRING_ONLY_EXTERNALS } from "../core/constants";
+import { isEsmFormat } from "../core/format";
 import { getGitMetadata } from "../core/git";
 
 interface EsbuildConfigOptions {
@@ -17,11 +18,8 @@ interface EsbuildConfig {
 }
 
 interface EsbuildConfigParams {
-  autoInit: boolean;
   logger: ConsolaInstance;
-  tracerOptionsCode: string;
   setOutputFormat: (format: "cjs" | "esm") => void;
-  setAutoInitHandledByBanner: (handled: boolean) => void;
 }
 
 /**
@@ -31,15 +29,12 @@ interface EsbuildConfigParams {
  * @see https://github.com/DataDog/dd-trace-js/blob/master/packages/datadog-esbuild/index.js
  */
 export function createEsbuildConfig({
-  autoInit,
   logger,
-  tracerOptionsCode,
   setOutputFormat,
-  setAutoInitHandledByBanner,
 }: EsbuildConfigParams): EsbuildConfig {
   return {
     /**
-     * Apply esbuild config mutations for externals and init banners.
+     * Apply esbuild config mutations for externals and git metadata.
      *
      * @param options - Esbuild options to mutate.
      * @see https://github.com/DataDog/dd-trace-js/blob/master/packages/datadog-esbuild/index.js
@@ -53,7 +48,7 @@ export function createEsbuildConfig({
         );
       }
 
-      const format = options.format === "esm" ? "esm" : "cjs";
+      const format = isEsmFormat(options.format) ? "esm" : "cjs";
       setOutputFormat(format);
       logger.debug(`esbuild output format: ${format}`);
 
@@ -63,37 +58,19 @@ export function createEsbuildConfig({
       const externalsArray = Array.isArray(existingExternals)
         ? existingExternals
         : [existingExternals];
-      const externals = new Set([...externalsArray, ...ESBUILD_EXTERNALS]);
+      const externals = new Set([...externalsArray, ...STRING_ONLY_EXTERNALS]);
       options.external = [...externals];
 
-      const existingBanner = options.banner?.js ?? "";
+      // Inject git metadata for Datadog source code integration
       const gitMetadata = getGitMetadata();
-      const isESM = options.format === "esm";
+      const gitBanner = generateGitMetadataBanner(gitMetadata);
 
-      if (isESM) {
-        const banner = generateESMInitBanner(
-          autoInit,
-          gitMetadata,
-          tracerOptionsCode,
-        );
+      if (gitBanner) {
+        const existingBanner = options.banner?.js ?? "";
         options.banner = {
           ...options.banner,
-          js: `${banner}\n${existingBanner}`,
+          js: existingBanner ? `${gitBanner}\n${existingBanner}` : gitBanner,
         };
-        if (autoInit) setAutoInitHandledByBanner(true);
-      } else {
-        const banner = generateCJSInitBanner(
-          autoInit,
-          gitMetadata,
-          tracerOptionsCode,
-        );
-        if (banner) {
-          options.banner = {
-            ...options.banner,
-            js: `${banner}\n${existingBanner}`,
-          };
-        }
-        if (autoInit) setAutoInitHandledByBanner(true);
       }
     },
   };

@@ -46,7 +46,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
 
       const bundle = await rolldown({
         input: path.join(temp.dir, "index.js"),
-        plugins: [rolldownPlugin({ autoInit: false })],
+        plugins: [rolldownPlugin()],
         external: ["dc-polyfill"],
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],
@@ -73,9 +73,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
 
       const bundle = await rolldown({
         input: path.join(temp.dir, "index.js"),
-        plugins: [
-          rolldownPlugin({ autoInit: false, excludeModules: ["pino"] }),
-        ],
+        plugins: [rolldownPlugin({ excludeModules: ["pino"] })],
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],
         },
@@ -102,7 +100,6 @@ describe("unplugin-datadog-apm (rolldown)", () => {
         input: path.join(temp.dir, "index.js"),
         plugins: [
           rolldownPlugin({
-            autoInit: false,
             additionalModules: ["custom-pkg"],
           }),
         ],
@@ -134,7 +131,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
 
       const bundle = await rolldown({
         input: path.join(temp.dir, "index.js"),
-        plugins: [rolldownPlugin({ autoInit: false })],
+        plugins: [rolldownPlugin()],
         external: ["import-in-the-middle/lib/register.js"],
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],
@@ -162,7 +159,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
 
       const bundle = await rolldown({
         input: path.join(temp.dir, "index.js"),
-        plugins: [rolldownPlugin({ autoInit: false })],
+        plugins: [rolldownPlugin()],
         external: ["import-in-the-middle/lib/register.js"],
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],
@@ -186,7 +183,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
 
       const bundle = await rolldown({
         input: path.join(temp.dir, "index.js"),
-        plugins: [rolldownPlugin({ autoInit: false })],
+        plugins: [rolldownPlugin()],
         external: ["dc-polyfill"],
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],

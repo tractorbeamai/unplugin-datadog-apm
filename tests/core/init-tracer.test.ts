@@ -7,18 +7,12 @@ import { initTracer } from "../../src/core/init-tracer";
 describe("initTracer", () => {
   it("initializes dd-trace and logs debug messages", () => {
     const require = createRequire(import.meta.url);
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => null);
     const moduleNamespace = { register: vi.fn() };
-    const debugMessages = {
-      init: "[test] init",
-      tracerProvider: "[test] tracer",
-      loaderHook: "[test] loader",
-    };
 
     initTracer({
       require,
       debug: true,
-      debugMessages,
       registerLoaderHook: true,
       moduleNamespace,
       loaderHookBaseUrl: "file:///test/",
@@ -26,31 +20,38 @@ describe("initTracer", () => {
       isMainThread: true,
     });
 
-    expect(logSpy).toHaveBeenCalledWith(debugMessages.init);
-    expect(logSpy).toHaveBeenCalledWith(debugMessages.tracerProvider);
-    expect(logSpy).toHaveBeenCalledWith(debugMessages.loaderHook);
+    expect(logSpy).toHaveBeenCalledWith(
+      "[unplugin-datadog-apm] dd-trace initialized",
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      "[unplugin-datadog-apm] TracerProvider registered with OTel API",
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      "[unplugin-datadog-apm] ESM loader hook registered",
+    );
     expect(moduleNamespace.register).toHaveBeenCalledTimes(1);
 
-    const registerCall = moduleNamespace.register.mock.calls[0];
-    expect(registerCall?.[1]).toBe("file:///test/");
-    expect(registerCall?.[2]).toEqual({ data: { exclude: ["fs"] } });
+    const registerCall = moduleNamespace.register.mock.calls[0] as [
+      string,
+      string | URL | undefined,
+      { data?: { exclude?: (string | RegExp)[] } } | undefined,
+    ];
+    const baseUrl = registerCall[1];
+    const registerOptions = registerCall[2];
+    expect(baseUrl).toBe("file:///test/");
+    expect(registerOptions).toEqual({ data: { exclude: ["fs"] } });
 
     logSpy.mockRestore();
   });
 
   it("skips initialization when not on the main thread", () => {
     const require = createRequire(import.meta.url);
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => null);
     const moduleNamespace = { register: vi.fn() };
 
     initTracer({
       require,
       debug: true,
-      debugMessages: {
-        init: "[test] init",
-        tracerProvider: "[test] tracer",
-        loaderHook: "[test] loader",
-      },
       registerLoaderHook: true,
       moduleNamespace,
       loaderHookBaseUrl: "file:///test/",

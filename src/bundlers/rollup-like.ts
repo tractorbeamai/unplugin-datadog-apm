@@ -3,6 +3,7 @@ import type { ConsolaInstance } from "consola";
 import { ROLLUP_EXTERNALS } from "../core/constants";
 import { convertCJSWrapperToESM } from "../core/convert-cjs-wrapper";
 import { mergeExternals } from "../core/externals";
+import { isEsmFormat } from "../core/format";
 
 export interface RollupLikeConfig {
   options?: (options: { external?: unknown }) => void;
@@ -19,16 +20,6 @@ interface RollupLikeConfigOptions {
   bundlerName: "rollup" | "rolldown";
   setOutputFormat: (format: "cjs" | "esm") => void;
   setUsesRenderChunkWrapperConversion: (uses: boolean) => void;
-}
-
-/**
- * Normalize rollup format strings to an ESM flag.
- *
- * @param format - Rollup output format string.
- * @returns True when the format is ESM.
- */
-function isEsmFormat(format: string | undefined): boolean {
-  return format === "es" || format === "esm";
 }
 
 /**

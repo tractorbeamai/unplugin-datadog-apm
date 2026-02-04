@@ -3,7 +3,7 @@
 - `src/`: core plugin logic and bundler adapters
 - `src/core/`: shared logic (wrappers, banners, resolves, tracing helpers)
 - `src/bundlers/`: bundler-specific hooks (esbuild/rollup/vite/webpack/rspack/rolldown)
-- `src/entrypoints/`: shared entrypoint glue
+- `src/*.ts`: package entrypoints (vite/rollup/esbuild/etc.)
 - `src/init.ts`: runtime init entry used by banners/wrappers
 - `tests/`: unit, bundler, and integration tests
 - `examples/`: runnable example apps

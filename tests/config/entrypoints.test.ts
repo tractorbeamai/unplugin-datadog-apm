@@ -4,12 +4,14 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
 // Read the tsdown config to get entry points
-const tsdownConfigPath = path.resolve(__dirname, "../../tsdown.config.ts");
-const packageJsonPath = path.resolve(__dirname, "../../package.json");
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const tsdownConfigPath = path.resolve(moduleDir, "../../tsdown.config.ts");
+const packageJsonPath = path.resolve(moduleDir, "../../package.json");
 
 /**
  * Expected entrypoints with their export paths and source files.
@@ -23,6 +25,11 @@ const EXPECTED_ENTRYPOINTS = {
     exportPath: "./nitro-plugin",
     source: "src/nitro-plugin.ts",
   },
+  register: { exportPath: "./register", source: "src/register.ts" },
+  "register-helpers": {
+    exportPath: "./register-helpers",
+    source: "src/register-helpers.ts",
+  },
   rolldown: { exportPath: "./rolldown", source: "src/rolldown.ts" },
   rollup: { exportPath: "./rollup", source: "src/rollup.ts" },
   rspack: { exportPath: "./rspack", source: "src/rspack.ts" },
@@ -35,7 +42,7 @@ describe("entrypoint configuration", () => {
     it.each(Object.entries(EXPECTED_ENTRYPOINTS))(
       "source file exists for %s entrypoint",
       (name, { source }) => {
-        const sourcePath = path.resolve(__dirname, "../..", source);
+        const sourcePath = path.resolve(moduleDir, "../..", source);
         expect(existsSync(sourcePath), `${source} should exist`).toBe(true);
       },
     );
@@ -100,7 +107,7 @@ describe("entrypoint configuration", () => {
       expect(existsSync(tsdownConfigPath)).toBe(true);
     });
 
-    it("config uses object-style entries with explicit keys", async () => {
+    it("config uses object-style entries with explicit keys", () => {
       // Read and parse the config file directly to avoid TS import restrictions
       const configContent = readFileSync(tsdownConfigPath, "utf8");
 
@@ -110,8 +117,9 @@ describe("entrypoint configuration", () => {
 
       // Verify all expected entries are present
       for (const [name, { source }] of Object.entries(EXPECTED_ENTRYPOINTS)) {
+        const escapedName = name.replaceAll("-", String.raw`\-`);
         const entryPattern = new RegExp(
-          `["']?${name.replace("-", "\\-")}["']?:\\s*["']${source}["']`,
+          String.raw`["']?${escapedName}["']?:\s*["']${source}["']`,
         );
         expect(
           configContent,
@@ -124,10 +132,12 @@ describe("entrypoint configuration", () => {
       const configContent = readFileSync(tsdownConfigPath, "utf8");
 
       // Extract entry keys from the config using regex
-      const entryBlockMatch = configContent.match(/entry:\s*{([^}]+)}/s);
-      expect(entryBlockMatch).not.toBeNull();
+      const entryBlockMatch = /entry:\s*\{([^}]*)\}/.exec(configContent);
+      if (!entryBlockMatch) {
+        throw new Error("Expected entry block in tsdown.config.ts");
+      }
 
-      const entryBlock = entryBlockMatch![1];
+      const entryBlock = entryBlockMatch[1];
       const keyPattern = /["']?([a-z-]+)["']?:\s*["']src\//g;
       const foundKeys: string[] = [];
       let match;

@@ -21,4 +21,3 @@ import { DatadogAPM } from "./index";
  */
 const webpack: typeof DatadogAPM.webpack = DatadogAPM.webpack;
 export default webpack;
-export { webpack as "module.exports" };

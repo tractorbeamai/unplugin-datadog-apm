@@ -34,7 +34,7 @@ describe("rollup bundler", () => {
       const bundle = await rollup({
         input: path.join(temp.dir, "index.js"),
         plugins: [
-          rollupPlugin({ debug: false, autoInit: false }),
+          rollupPlugin({ debug: false }),
           nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
@@ -56,7 +56,7 @@ describe("rollup bundler", () => {
       const bundle = await rollup({
         input: path.join(temp.dir, "index.js"),
         plugins: [
-          rollupPlugin({ debug: false, autoInit: false }),
+          rollupPlugin({ debug: false }),
           nodeResolve({ rootDir: temp.dir }),
         ],
         external: ["import-in-the-middle/lib/register.js"],
@@ -77,7 +77,7 @@ describe("rollup bundler", () => {
       const bundle = await rollup({
         input: path.join(temp.dir, "index.js"),
         plugins: [
-          rollupPlugin({ debug: false, autoInit: false }),
+          rollupPlugin({ debug: false }),
           nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
@@ -103,7 +103,7 @@ describe("rollup bundler", () => {
       const bundle = await rollup({
         input: path.join(temp.dir, "index.js"),
         plugins: [
-          rollupPlugin({ debug: false, autoInit: false }),
+          rollupPlugin({ debug: false }),
           nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
@@ -126,7 +126,7 @@ describe("rollup bundler", () => {
       const bundle = await rollup({
         input: path.join(temp.dir, "index.js"),
         plugins: [
-          rollupPlugin({ debug: false, autoInit: false }),
+          rollupPlugin({ debug: false }),
           nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
@@ -149,7 +149,7 @@ describe("rollup bundler", () => {
       const bundle = await rollup({
         input: path.join(temp.dir, "index.js"),
         plugins: [
-          rollupPlugin({ debug: false, autoInit: false }),
+          rollupPlugin({ debug: false }),
           nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],

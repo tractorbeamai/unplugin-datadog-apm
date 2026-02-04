@@ -21,4 +21,3 @@ import { DatadogAPM } from "./index";
  */
 const vite: typeof DatadogAPM.vite = DatadogAPM.vite;
 export default vite;
-export { vite as "module.exports" };

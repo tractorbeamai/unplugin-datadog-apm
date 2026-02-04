@@ -19,7 +19,10 @@ describe("ast-utils", () => {
       expect(isIdentifier(expression.left, "module")).toBe(false);
       expect(isIdentifier(expression as unknown as Node, "module")).toBe(false);
       expect(
-        isIdentifier({ type: "Identifier", name: "module" } as Node, "module"),
+        isIdentifier(
+          { type: "Identifier", name: "module" } as unknown as Node,
+          "module",
+        ),
       ).toBe(true);
     });
   });
@@ -28,12 +31,15 @@ describe("ast-utils", () => {
     it("matches a literal node with a string value", () => {
       expect(
         isStringLiteral(
-          { type: "Literal", value: "exports" } as Node,
+          { type: "Literal", value: "exports" } as unknown as Node,
           "exports",
         ),
       ).toBe(true);
       expect(
-        isStringLiteral({ type: "Literal", value: "other" } as Node, "exports"),
+        isStringLiteral(
+          { type: "Literal", value: "other" } as unknown as Node,
+          "exports",
+        ),
       ).toBe(false);
     });
   });

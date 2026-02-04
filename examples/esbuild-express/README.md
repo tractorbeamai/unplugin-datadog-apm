@@ -42,6 +42,17 @@ Expected response when tracing is working:
 
 1. `build.mjs` uses esbuild with the `unplugin-datadog-apm/esbuild` plugin
 2. The plugin wraps instrumentable modules (like `express`) for dd-trace
-3. `autoInit: true` (default) injects `unplugin-datadog-apm/init` at the entry point
-4. The init module initializes dd-trace and registers the TracerProvider with OpenTelemetry API
+3. At runtime, `--import unplugin-datadog-apm/register` initializes dd-trace before any app code loads
+4. The register module also sets up the TracerProvider with OpenTelemetry API
 5. The `/api/health` endpoint uses `@opentelemetry/api` to verify tracing is active
+
+## Configuration
+
+Configure dd-trace via environment variables:
+
+```bash
+export DD_SERVICE=my-api
+export DD_ENV=production
+export DD_VERSION=1.0.0
+export DD_TRACE_DEBUG=true  # optional, shows initialization logs
+```

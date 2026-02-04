@@ -21,4 +21,3 @@ import { DatadogAPM } from "./index";
  */
 const rolldown: typeof DatadogAPM.rolldown = DatadogAPM.rolldown;
 export default rolldown;
-export { rolldown as "module.exports" };

@@ -60,40 +60,53 @@ pnpm start
 ## Key Files
 
 - `vite.config.ts` - Vite configuration with the Datadog APM plugin
+- `register.mjs` - Custom dd-trace register file with tracer.use() examples
 - `src/start.ts` - TanStack Start instance with tracing middleware
 - `src/routes/` - TanStack Router file-based routes
 
 ## How it Works
 
-The `DatadogAPM()` plugin automatically:
+The `DatadogAPM()` plugin automatically wraps instrumentable modules (http, pg, redis, etc.) at build time for dd-trace compatibility.
 
-1. Initializes dd-trace before any HTTP modules load
-2. Wraps instrumentable modules (http, pg, redis, etc.) at build time
-3. Registers TracerProvider with OpenTelemetry API
+At runtime, `--import unplugin-datadog-apm/register` ensures dd-trace initializes before any app code loads. This:
+
+1. Initializes dd-trace with environment variable configuration
+2. Registers the TracerProvider with OpenTelemetry API
+3. Sets up the ESM loader hook for module instrumentation
 
 This allows you to use `@opentelemetry/api` (e.g., `trace.getActiveSpan()`) to access spans created by dd-trace.
+
+## Custom Register File
+
+For advanced configuration (tracer.use(), sampling rules, etc.), use a custom register file:
+
+```bash
+# Use the included custom register file
+pnpm start:custom
+
+# Or specify your own
+node --import ./my-register.mjs .output/server/index.mjs
+```
+
+See `register.mjs` for an example that configures HTTP and fetch integrations with custom hooks.
 
 ## Tracing Behavior
 
 ### Production Mode (`pnpm build && pnpm start`)
 
-✅ **Fully functional** - dd-trace initializes in the Nitro worker where API handlers execute:
+**Fully functional** - The `--import unplugin-datadog-apm/register` flag ensures dd-trace initializes before any app code:
 
-- dd-trace initialization logs appear
+- dd-trace initialization logs appear (with `DD_TRACE_DEBUG=true`)
 - HTTP requests are traced
-- `trace.getActiveSpan()` should return active spans (once Nitro nightly is stable)
+- `trace.getActiveSpan()` returns active spans
 - AsyncLocalStorage context propagates correctly
 
 ### Dev Mode (`pnpm dev`)
 
-⚠️ **Partial functionality** - Vite and Nitro run in separate processes communicating via IPC/Unix sockets:
+**Partial functionality** - Vite dev mode runs differently than production:
 
-- ✅ Plugin loads and instruments modules
-- ✅ Build-time transformations work correctly
-- ✗ dd-trace doesn't initialize in the Nitro worker (technical limitation)
-- ✗ `trace.getActiveSpan()` returns `null` in API handlers
-- ✗ AsyncLocalStorage context doesn't cross the IPC boundary
-
-**Why?** The rollup banner that injects dd-trace initialization only applies to production builds, not dynamic dev mode module loading.
+- Build-time transformations work correctly
+- However, the `--import` flag isn't automatically applied in dev mode
+- For full tracing in dev, manually run: `node --import unplugin-datadog-apm/register node_modules/.bin/vite`
 
 **Recommendation**: Use production builds (`pnpm build && pnpm start`) for testing tracing functionality.

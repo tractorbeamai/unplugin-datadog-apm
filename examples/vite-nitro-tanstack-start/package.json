@@ -8,7 +8,8 @@
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview",
-    "start": "node .output/server/index.mjs"
+    "start": "node --import unplugin-datadog-apm/register .output/server/index.mjs",
+    "start:custom": "node --import ./register.mjs .output/server/index.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",

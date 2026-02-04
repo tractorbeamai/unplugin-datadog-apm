@@ -31,6 +31,8 @@
     "./esbuild": "./dist/esbuild.mjs",
     "./init": "./dist/init.mjs",
     "./nitro-plugin": "./dist/nitro-plugin.mjs",
+    "./register": "./dist/register.mjs",
+    "./register-helpers": "./dist/register-helpers.mjs",
     "./rolldown": "./dist/rolldown.mjs",
     "./rollup": "./dist/rollup.mjs",
     "./rspack": "./dist/rspack.mjs",
@@ -56,6 +58,12 @@
       ],
       "nitro-plugin": [
         "./dist/nitro-plugin.d.mts"
+      ],
+      "register": [
+        "./dist/register.d.mts"
+      ],
+      "register-helpers": [
+        "./dist/register-helpers.d.mts"
       ],
       "rolldown": [
         "./dist/rolldown.d.mts"
@@ -144,7 +152,7 @@
   },
   "packageManager": "pnpm@10.28.2",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.0.0"
   },
   "publishConfig": {
     "access": "public",

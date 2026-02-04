@@ -1,6 +1,10 @@
 /**
  * Runtime verification tests for all bundlers.
- * Verifies that dd-trace auto-instrumentation works without --import flag.
+ * Verifies that dd-trace auto-instrumentation works with --import flag.
+ *
+ * These tests confirm that @opentelemetry/api integration works:
+ * - trace.getActiveSpan() returns active dd-trace spans
+ * - span.spanContext() provides traceId and spanId
  *
  * Uses a shared express health check fixture to test each bundler's output.
  * No manual externals - the plugin should auto-externalize everything needed.
@@ -12,13 +16,11 @@ import { fileURLToPath } from "node:url";
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import nodeResolve from "@rollup/plugin-node-resolve";
-import { rspack, type RspackOptions } from "@rspack/core";
 import * as esbuild from "esbuild";
 import { rolldown } from "rolldown";
 import { rollup, type InputPluginOption } from "rollup";
 import { build as viteBuild } from "vite";
 import { describe, expect, it } from "vitest";
-import webpack from "webpack";
 
 import esbuildPlugin from "../../src/esbuild";
 import rolldownPlugin from "../../src/rolldown";
@@ -26,6 +28,7 @@ import rollupPlugin from "../../src/rollup";
 import rspackPlugin from "../../src/rspack";
 import vitePlugin from "../../src/vite";
 import webpackPlugin from "../../src/webpack";
+import { runRspack, runWebpack } from "../helpers/bundlers";
 import { useRuntimeTempDir } from "../helpers/temp-dir";
 import { fetchHealth, startServer, stopServer } from "../utils";
 
@@ -36,70 +39,11 @@ const ESM_FIXTURE = path.join(FIXTURE_DIR, "server.mjs");
 
 const jsonPlugin = json as unknown as () => unknown;
 
-interface WebpackStatsLike {
-  hasErrors: () => boolean;
-  toString: () => string;
-}
-
-type WebpackInvoker = (
-  config: webpack.Configuration,
-  callback: (err?: Error | null, stats?: WebpackStatsLike) => void,
-) => void;
-
-function runWebpack(config: webpack.Configuration): Promise<void> {
-  const invokeWebpack = webpack as unknown as WebpackInvoker;
-
-  return new Promise((resolve, reject) => {
-    invokeWebpack(config, (err, stats) => {
-      if (err) {
-        reject(err instanceof Error ? err : new Error(String(err)));
-        return;
-      }
-      if (!stats) {
-        reject(new Error("No stats returned"));
-        return;
-      }
-      if (stats.hasErrors()) {
-        reject(new Error(stats.toString()));
-        return;
-      }
-      resolve();
-    });
-  });
-}
-
-interface RspackStatsLike {
-  hasErrors: () => boolean;
-  toString: () => string;
-}
-type RspackInvoker = (
-  config: RspackOptions,
-  callback: (err?: Error | null, stats?: RspackStatsLike) => void,
-) => void;
-
-function runRspack(config: RspackOptions): Promise<void> {
-  const invokeRspack = rspack as unknown as RspackInvoker;
-
-  return new Promise((resolve, reject) => {
-    invokeRspack(config, (err, stats) => {
-      if (err) {
-        reject(err instanceof Error ? err : new Error(String(err)));
-        return;
-      }
-      if (stats?.hasErrors()) {
-        reject(new Error(stats.toString()));
-        return;
-      }
-      resolve();
-    });
-  });
-}
-
 describe("runtime verification", () => {
   const temp = useRuntimeTempDir();
 
   describe("esbuild", () => {
-    it("CJS: captures traces without --import flag", async () => {
+    it("CJS: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.cjs");
       const outputPath = path.join(temp.dir, "dist/server.cjs");
 
@@ -127,7 +71,7 @@ describe("runtime verification", () => {
 
     // KNOWN LIMITATION: esbuild ESM bundles can emit dynamic require shims for
     // CJS dependencies (e.g. express), which Node ESM refuses to execute.
-    it.skip("ESM: captures traces without --import flag", async () => {
+    it.skip("ESM: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.mjs");
       const outputPath = path.join(temp.dir, "dist/server.mjs");
 
@@ -155,7 +99,7 @@ describe("runtime verification", () => {
   });
 
   describe("rollup", () => {
-    it("CJS: captures traces without --import flag", async () => {
+    it("CJS: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.cjs");
       const outputPath = path.join(temp.dir, "dist/server.cjs");
 
@@ -183,7 +127,7 @@ describe("runtime verification", () => {
       }
     }, 15_000);
 
-    it("ESM: captures traces without --import flag", async () => {
+    it("ESM: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.mjs");
       const outputDir = path.join(temp.dir, "dist");
       const outputPath = path.join(outputDir, "server.mjs");
@@ -225,7 +169,7 @@ describe("runtime verification", () => {
     // aren't executed for side-effect-only scripts. We use ESM source for both
     // output formats to ensure the code runs immediately.
 
-    it("CJS output: captures traces without --import flag", async () => {
+    it("CJS output: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.mjs");
       const outputPath = path.join(temp.dir, "dist/server.cjs");
 
@@ -254,7 +198,7 @@ describe("runtime verification", () => {
       }
     }, 15_000);
 
-    it("ESM output: captures traces without --import flag", async () => {
+    it("ESM output: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.mjs");
       const outputPath = path.join(temp.dir, "dist/server.mjs");
 
@@ -286,7 +230,7 @@ describe("runtime verification", () => {
   });
 
   describe("webpack", () => {
-    it("CJS: captures traces without --import flag", async () => {
+    it("CJS: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.js");
       const outputPath = path.join(temp.dir, "dist/server.cjs");
 
@@ -316,27 +260,7 @@ describe("runtime verification", () => {
       }
     }, 15_000);
 
-    // KNOWN LIMITATION: ESM output from webpack does not support automatic
-    // dd-trace instrumentation without the --import flag.
-    //
-    // Root cause: Webpack resolves external modules at bundle load time, before
-    // any application code runs. Even with externalsType: 'import' (which uses
-    // dynamic import() syntax), webpack's runtime awaits these imports
-    // synchronously during module initialization.
-    //
-    // This means the ESM loader hook (import-in-the-middle) cannot intercept
-    // the imports because they're resolved before the hook is registered.
-    //
-    // Workarounds investigated (none work):
-    // - externalsType: 'import' - Still resolves at load time
-    // - externalsType: 'module-import' - Uses static imports for import statements
-    //
-    // Solution: For ESM output from webpack/rspack, use the --import flag:
-    //   node --import dd-trace/initialize dist/server.mjs
-    //
-    // CJS output works without --import because the CJS wrapper code intercepts
-    // require() calls at runtime.
-    it.skip("ESM: captures traces without --import flag", async () => {
+    it("ESM: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.mjs");
       const outputPath = path.join(temp.dir, "dist/server.mjs");
 
@@ -370,7 +294,7 @@ describe("runtime verification", () => {
   });
 
   describe("rspack", () => {
-    it("CJS: captures traces without --import flag", async () => {
+    it("CJS: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.js");
       const outputPath = path.join(temp.dir, "dist/server.cjs");
 
@@ -400,12 +324,7 @@ describe("runtime verification", () => {
       }
     }, 15_000);
 
-    // KNOWN LIMITATION: Same as webpack - rspack resolves external modules at
-    // bundle load time. See the webpack ESM test comment above for full details.
-    //
-    // Solution: For ESM output from rspack, use the --import flag:
-    //   node --import dd-trace/initialize dist/server.mjs
-    it.skip("ESM: captures traces without --import flag", async () => {
+    it("ESM: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.mjs");
       const outputPath = path.join(temp.dir, "dist/server.mjs");
 
@@ -439,7 +358,7 @@ describe("runtime verification", () => {
   });
 
   describe("vite", () => {
-    it("ESM: captures traces without --import flag", async () => {
+    it("ESM: captures traces with --import flag", async () => {
       const inputPath = path.join(temp.dir, "server.mjs");
 
       copyFileSync(ESM_FIXTURE, inputPath);

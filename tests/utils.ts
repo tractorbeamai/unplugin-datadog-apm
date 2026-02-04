@@ -92,13 +92,22 @@ export interface ServerProcess {
  *
  * The temp directory is within the project, so both CJS and ESM can
  * resolve externalized packages from the project's node_modules.
+ *
+ * @param bundlePath - Path to the bundled server file.
+ * @param options - Optional configuration.
+ * @param options.env - Additional environment variables.
+ * @param options.useImportFlag - Whether to use --import unplugin-datadog-apm/register.
  */
 export function startServer(
   bundlePath: string,
-  env?: Record<string, string>,
+  options?: { env?: Record<string, string>; useImportFlag?: boolean },
 ): Promise<ServerProcess> {
+  const { env, useImportFlag = true } = options ?? {};
   return new Promise((resolve, reject) => {
-    const proc = spawn("node", [bundlePath], {
+    const args = useImportFlag
+      ? ["--import", "unplugin-datadog-apm/register", bundlePath]
+      : [bundlePath];
+    const proc = spawn("node", args, {
       cwd: path.dirname(bundlePath),
       env: {
         ...process.env,

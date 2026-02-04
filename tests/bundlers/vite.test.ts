@@ -65,7 +65,7 @@ describe("unplugin-datadog-apm (vite)", () => {
             external: ["import-in-the-middle/lib/register.js"],
           },
         },
-        plugins: [vitePlugin({ debug: false, autoInit: false })],
+        plugins: [vitePlugin({ debug: false })],
       });
 
       const distDir = path.join(temp.dir, "dist");
@@ -102,7 +102,6 @@ describe("unplugin-datadog-apm (vite)", () => {
         plugins: [
           vitePlugin({
             debug: false,
-            autoInit: false,
             excludeModules: ["pino"],
           }),
         ],

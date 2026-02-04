@@ -11,8 +11,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { parse, type Node } from "acorn";
+import type { Node } from "acorn";
 
+import { parseScript } from "./ast-utils";
 import { isESMFile } from "./dd-trace";
 import { BUILTINS, resolveModule } from "./resolve";
 
@@ -99,13 +100,8 @@ export function parseExportsFromSource(code: string): string[] {
   const exports: string[] = [];
   const starExports: string[] = [];
 
-  let ast: Node & { body: Node[] };
-  try {
-    ast = parse(code, {
-      ecmaVersion: "latest",
-      sourceType: "module",
-    }) as Node & { body: Node[] };
-  } catch {
+  const ast = parseScript(code, "module");
+  if (!ast) {
     // If parsing fails, return empty array (caller handles fallback)
     return [];
   }

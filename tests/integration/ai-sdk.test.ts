@@ -798,7 +798,7 @@ describe("AI SDK instrumentation", () => {
       expect(typeof ddTraceModule.llmobs).toBe("object");
     });
 
-    it("instruments tool calls with Datadog channel (not Vercel telemetry)", async () => {
+    it("instruments tool calls with Datadog channel", async () => {
       // This verifies the tool function is wrapped to publish to dd-trace channels
       // rather than using Vercel's experimental_telemetry directly
       createFixture(temp.dir, {

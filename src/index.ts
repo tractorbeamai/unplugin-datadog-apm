@@ -5,6 +5,8 @@
  * 1. Wrapping CommonJS modules to publish to 'dd-trace:bundler:load' channel
  * 2. Creating ESM proxy modules using import-in-the-middle for dd-trace interception
  *
+ * Use with node --import unplugin-datadog-apm/register for initialization.
+ *
  * Based on datadog-esbuild: https://github.com/DataDog/dd-trace-js/tree/master/packages/datadog-esbuild
  *
  * @see https://docs.datadoghq.com/tracing/trace_collection/automatic_instrumentation/dd_libraries/nodejs
@@ -31,28 +33,35 @@ import {
   wrapCommonJSModule,
   wrapCommonJSModuleForESM,
 } from "./core/cjs-wrapper";
-import {
-  ENTRY_WRAPPER_PREFIX,
-  ESM_PROXY_SUFFIX,
-  NODE_MODULES,
-} from "./core/constants";
+import { ESM_PROXY_SUFFIX, NODE_MODULES } from "./core/constants";
 import {
   ddTraceHooks,
   extractPackageAndModulePath,
   isESMFile,
 } from "./core/dd-trace";
-import { generateEntryWrapper } from "./core/entry-wrapper";
 import { generateESMProxy, resolveExportNames } from "./core/esm-proxy";
 import { getGitMetadata } from "./core/git";
 import { resolveOptions, type Options } from "./core/options";
 import { BUILTINS, getBaseModuleName, resolveModule } from "./core/resolve";
-import { serializeInitOptions } from "./core/serialize";
 import type { ModuleInfo, PluginData } from "./core/types";
 
 const logger = createConsola({ level: -1 }).withTag("datadog");
 
 // Use createRequire for loading dd-trace at runtime.
 const require = createRequire(import.meta.url);
+
+/**
+ * Check if a source file should be rewritten for IAST.
+ *
+ * @param id - Module id or path.
+ * @returns True for eligible application JS files.
+ * @see https://github.com/DataDog/dd-trace-js/blob/master/packages/datadog-esbuild/index.js
+ */
+function isIastCandidate(id: string): boolean {
+  if (id.endsWith(ESM_PROXY_SUFFIX)) return false;
+  if (id.includes(NODE_MODULES)) return false;
+  return /\.(?:cjs|mjs|js)$/.test(id);
+}
 
 /**
  * Build the plugin factory used by unplugin.
@@ -63,9 +72,7 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
   rawOptions = {},
 ) => {
   const options = resolveOptions(rawOptions);
-  const { debug, additionalModules, excludeModules, autoInit, tracerOptions } =
-    options;
-  const tracerOptionsCode = serializeInitOptions(tracerOptions);
+  const { debug, additionalModules, excludeModules } = options;
   const iastEnabled =
     process.env.DD_IAST_ENABLED?.toLowerCase() === "true" ||
     process.env.DD_IAST_ENABLED === "1";
@@ -84,13 +91,6 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
   // specifier while rollup-like bundlers call `load()` with the proxy id.
   const esmProxyInfoByProxyId = new Map<string, ModuleInfo>();
   const esmProxyAliasToProxyId = new Map<string, string>();
-
-  // Track wrapped entry points (original path -> true).
-  const wrappedEntries = new Set<string>();
-
-  // If true, the bundler has already injected auto-init via a banner, so we should
-  // not wrap entry points.
-  let autoInitHandledByBanner = false;
 
   // Lazy IAST rewriter instance, when enabled.
   let iastRewriter: {
@@ -129,20 +129,6 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
     }
   };
 
-  /**
-   * Check if a source file should be rewritten for IAST.
-   *
-   * @param id - Module id or path.
-   * @returns True for eligible application JS files.
-   * @see https://github.com/DataDog/dd-trace-js/blob/master/packages/datadog-esbuild/index.js
-   */
-  const isIastCandidate = (id: string) => {
-    if (id.startsWith(ENTRY_WRAPPER_PREFIX)) return false;
-    if (id.endsWith(ESM_PROXY_SUFFIX)) return false;
-    if (id.includes(NODE_MODULES)) return false;
-    return /\.(cjs|mjs|js)$/.test(id);
-  };
-
   // Track output format for format-aware wrapping.
   let outputFormat: "cjs" | "esm" | "unknown" = "unknown";
 
@@ -162,15 +148,6 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
    */
   const handleEsbuildOutputFormat = (format: "cjs" | "esm") => {
     outputFormat = format;
-  };
-
-  /**
-   * Track whether the bundler injected auto-init via a banner.
-   *
-   * @param handled - Whether auto-init was handled by the banner.
-   */
-  const handleAutoInitHandledByBanner = (handled: boolean) => {
-    autoInitHandledByBanner = handled;
   };
 
   /**
@@ -206,62 +183,12 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
       logger.debug(
         `Loaded ${ddTraceHooks.size} instrumentable modules from dd-trace`,
       );
-      logger.info(`Auto-init: ${autoInit ? "enabled" : "disabled"}`);
     },
 
     /**
      * Resolve module ids and decide whether to wrap or proxy them.
      */
-    resolveId(importee, importer, resolveOptions) {
-      // This hook answers two questions:
-      // - should we intercept this import at all?
-      // - if yes, do we return a wrapped/virtual id?
-      // Handle entry wrapper virtual modules.
-      if (importee.startsWith(ENTRY_WRAPPER_PREFIX)) {
-        return importee;
-      }
-
-      /**
-       * Resolve a base directory for module resolution.
-       */
-      const getResolveDir = () =>
-        importer ? path.dirname(importer) : process.cwd();
-
-      // Check if this is an entry point we should wrap.
-      const isEntry = resolveOptions.isEntry;
-
-      // Wrap entry points to ensure dd-trace is initialized first.
-      // If the bundler has already handled auto-init via a banner, skip wrapping.
-      if (autoInit && isEntry && !autoInitHandledByBanner) {
-        // Normalize the entry id to a filesystem path so we can cache it.
-        // Resolve the actual path for the entry.
-        let resolvedPath: string;
-
-        if (path.isAbsolute(importee)) {
-          resolvedPath = importee;
-        } else if (importee.startsWith(".")) {
-          resolvedPath = path.resolve(getResolveDir(), importee);
-        } else {
-          // Bare specifier, resolve it through Node rules.
-          try {
-            resolvedPath = resolveModule(importee, getResolveDir());
-          } catch (error) {
-            logger.debug(
-              `Could not resolve entry ${importee}: ${error instanceof Error ? error.message : error}`,
-            );
-            return null;
-          }
-        }
-
-        // Skip if already wrapped.
-        if (!wrappedEntries.has(resolvedPath)) {
-          // The wrapper id is virtual, so return it directly.
-          wrappedEntries.add(resolvedPath);
-          logger.debug(`Wrapping entry point: ${resolvedPath}`);
-          return ENTRY_WRAPPER_PREFIX + resolvedPath;
-        }
-      }
-
+    resolveId(importee, importer) {
       // Non-entry imports need an importer so we can resolve relative ids.
       if (!importer) return null;
 
@@ -365,9 +292,7 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
      */
     loadInclude(id) {
       return (
-        id.endsWith(ESM_PROXY_SUFFIX) ||
-        id.startsWith(ENTRY_WRAPPER_PREFIX) ||
-        esmProxyAliasToProxyId.has(id) // For webpack: id is the raw import path
+        id.endsWith(ESM_PROXY_SUFFIX) || esmProxyAliasToProxyId.has(id) // For webpack: id is the raw import path
       );
     },
 
@@ -375,14 +300,6 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
      * Provide module contents for virtual modules and proxies.
      */
     async load(id) {
-      // This hook only runs for ids accepted by loadInclude().
-      // Handle entry wrapper virtual modules.
-      if (id.startsWith(ENTRY_WRAPPER_PREFIX)) {
-        const originalPath = id.slice(ENTRY_WRAPPER_PREFIX.length);
-        logger.debug(`Generating entry wrapper for: ${originalPath}`);
-        return generateEntryWrapper(originalPath, tracerOptionsCode);
-      }
-
       // Handle ESM proxy modules.
       // Proxy id for rollup-like bundlers, raw import for webpack.
       const proxyId = esmProxyAliasToProxyId.get(id) ?? id;
@@ -475,7 +392,7 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
     },
 
     /**
-     * Log summary counts for wrapped modules and entries.
+     * Log summary counts for wrapped modules.
      */
     buildEnd() {
       const cjsCount = [...moduleInfoCache.values()].filter(
@@ -485,17 +402,11 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
       if (cjsCount > 0 || esmCount > 0) {
         logger.info(`Instrumented ${cjsCount} CJS + ${esmCount} ESM modules`);
       }
-      if (wrappedEntries.size > 0) {
-        logger.info(`Wrapped ${wrappedEntries.size} entry points`);
-      }
     },
 
     esbuild: createEsbuildConfig({
-      autoInit,
       logger,
-      tracerOptionsCode,
       setOutputFormat: handleEsbuildOutputFormat,
-      setAutoInitHandledByBanner: handleAutoInitHandledByBanner,
     }),
 
     rollup: createRollupConfig({
@@ -519,12 +430,8 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
     }),
 
     vite: createViteConfig({
-      autoInit,
       debug,
       logger,
-      require,
-      tracerOptions,
-      tracerOptionsCode,
     }),
   };
 };

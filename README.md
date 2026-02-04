@@ -16,7 +16,7 @@ When you bundle a Node.js application, `dd-trace`'s runtime instrumentation can'
 ## Installation
 
 ```bash
-npm i -D unplugin-datadog-apm
+npm i unplugin-datadog-apm
 ```
 
 Requires `dd-trace` as a peer dependency:
@@ -25,20 +25,42 @@ Requires `dd-trace` as a peer dependency:
 npm i dd-trace
 ```
 
+## Requirements
+
+- Node.js >=22.0.0
+- dd-trace >=5.0.0 (peer dependency)
+- ESM-only package: use ESM import syntax in bundler config files
+- If you use the Vite adapter, Vite >=7.0.0
+
+## Quick Start
+
+**1. Add the plugin to your bundler config:**
+
+```ts
+// vite.config.ts
+import DatadogAPM from "unplugin-datadog-apm/vite";
+
+export default defineConfig({
+  plugins: [DatadogAPM()],
+});
+```
+
+**2. Run your app with the `--import` flag:**
+
+```bash
+node --import unplugin-datadog-apm/register dist/server.js
+```
+
+That's it! dd-trace will automatically instrument your bundled application.
+
 ## Configuration
+
+### Plugin Options
 
 ```ts
 DatadogAPM({
-  // Automatically wrap entry points with dd-trace initialization (default: true)
-  autoInit: true,
-
   // Enable debug logging (default: !!process.env.DD_TRACE_DEBUG)
   debug: false,
-
-  // Options forwarded to dd-trace init
-  tracerOptions: {
-    service: "my-service",
-  },
 
   // Additional modules to instrument beyond dd-trace defaults
   additionalModules: ["my-custom-module"],
@@ -48,20 +70,67 @@ DatadogAPM({
 });
 ```
 
-## Initialization
+### Runtime Configuration
 
-dd-trace must initialize BEFORE any HTTP modules are loaded. The plugin handles this automatically.
+dd-trace is configured at runtime via environment variables:
 
-When `autoInit` is enabled (the default), the plugin detects entry points and wraps them with initialization code that runs before any other code. This ensures dd-trace instruments HTTP and other modules correctly.
+```bash
+DD_SERVICE=my-app \
+DD_ENV=production \
+DD_VERSION=1.2.3 \
+node --import unplugin-datadog-apm/register dist/server.js
+```
 
-The initialization module (`unplugin-datadog-apm/init`):
+See [Datadog's Node.js configuration docs](https://docs.datadoghq.com/tracing/trace_collection/library_config/nodejs/) for all available options.
 
-- Initializes dd-trace
-- Registers TracerProvider with OpenTelemetry API (so `trace.getActiveSpan()` works)
-- Configures HTTP instrumentation with sensible defaults
-- Uses `tracerOptions` from the plugin config when auto-init is enabled
+### Custom Register File
 
-## Usage
+For advanced configuration (custom `tracer.use()` calls, sampling rules, hooks), create your own register file:
+
+```js
+// scripts/datadog-register.mjs
+import tracer from "dd-trace";
+import {
+  registerLoaderHook,
+  setupTracer,
+} from "unplugin-datadog-apm/register-helpers";
+
+tracer.init({
+  service: "my-app",
+  env: "production",
+});
+
+// Silence health check endpoints
+tracer.use("http", {
+  hooks: {
+    request: (span, req) => {
+      if (req.url === "/health") {
+        span.setTag("manual.drop", true);
+      }
+    },
+  },
+});
+
+// Add user context to express spans
+tracer.use("express", {
+  hooks: {
+    request: (span, req) => {
+      span.setTag("user.id", req.user?.id);
+    },
+  },
+});
+
+setupTracer(tracer);
+registerLoaderHook();
+```
+
+Then run with your custom register:
+
+```bash
+node --import ./scripts/datadog-register.mjs dist/server.js
+```
+
+## Bundler Setup
 
 <details>
 <summary>Vite</summary><br>
@@ -91,6 +160,7 @@ export default {
     "dc-polyfill",
     "import-in-the-middle",
     "@opentelemetry/api",
+    "@openfeature/core",
     "unplugin-datadog-apm",
   ],
 };
@@ -126,6 +196,7 @@ build({
     "dc-polyfill",
     "import-in-the-middle",
     "@opentelemetry/api",
+    "@openfeature/core",
     "unplugin-datadog-apm",
   ],
 });
@@ -147,6 +218,7 @@ export default {
     "dc-polyfill",
     "import-in-the-middle",
     "@opentelemetry/api",
+    "@openfeature/core",
     "unplugin-datadog-apm",
   ],
 };
@@ -168,40 +240,59 @@ export default {
 
 <br></details>
 
+## Running Your Application
+
+Always use the `--import` flag when running your bundled application:
+
+```bash
+node --import unplugin-datadog-apm/register dist/server.js
+```
+
+For Docker deployments:
+
+```dockerfile
+CMD ["node", "--import", "unplugin-datadog-apm/register", "dist/server.js"]
+```
+
+For package.json scripts:
+
+```json
+{
+  "scripts": {
+    "start": "node --import unplugin-datadog-apm/register dist/server.js"
+  }
+}
+```
+
 ## Important Notes
 
-- **Externalize runtime deps**: You must externalize `dd-trace`, `dc-polyfill`, `import-in-the-middle`, `@opentelemetry/api`, and `unplugin-datadog-apm` in your bundler config. These are runtime dependencies that should not be bundled.
-- **esbuild minify**: If you use `minify: true` with esbuild, you must also set `keepNames: true` or the plugin will refuse to bundle (matches dd-trace expectations).
-- **esbuild ESM + CJS deps**: esbuild ESM output can emit dynamic-require shims for CommonJS dependencies. Node ESM refuses to execute those shims (for example, `express`), so prefer CJS output or ensure dependencies are ESM-only.
+- **Externalize runtime deps**: You must externalize `dd-trace`, `dc-polyfill`, `import-in-the-middle`, `@opentelemetry/api`, `@openfeature/core`, and `unplugin-datadog-apm` in your bundler config. These are runtime dependencies that should not be bundled.
+- **esbuild constraints**: See "Limitations and Caveats" for `minify`/`keepNames` requirements.
 - **Plugin order**: The plugin uses `enforce: 'pre'` to run before other transforms.
 - **Module detection**: The plugin uses dd-trace's internal utilities to detect which modules are instrumentable and whether they're ESM or CommonJS.
 - **Git metadata**: When git metadata is available at build time, the plugin injects `DD_GIT_REPOSITORY_URL` and `DD_GIT_COMMIT_SHA` into the output banner.
 - **IAST rewrite**: When `DD_IAST_ENABLED=true`, the plugin rewrites application JS files using dd-trace's IAST rewriter.
 
-## Known Limitations
+## Limitations and Caveats
 
-### Webpack/Rspack ESM Output
+### Bundler and output constraints
 
-When using webpack or rspack with ESM output (`library.type: 'module'`), automatic dd-trace instrumentation does not work without the `--import` flag.
+- **esbuild minify**: If you use `minify: true`, you must also set `keepNames: true` or the plugin will refuse to bundle (matches dd-trace expectations).
+- **esbuild ESM + CJS deps**: esbuild ESM output can emit dynamic-require shims for CommonJS dependencies. Node ESM refuses to execute those shims (for example, `express`), so prefer CJS output or ensure dependencies are ESM-only.
 
-**Why?** Webpack and rspack resolve external modules at bundle load time, before any application code runs. This means the ESM loader hook cannot intercept imports because they're resolved before the hook is registered.
+### Instrumentation scope
 
-**Solution:** For ESM output from webpack/rspack, use the `--import` flag:
+- Only [modules supported by dd-trace](https://docs.datadoghq.com/tracing/trace_collection/compatibility/nodejs/) (plus `additionalModules`) are wrapped.
+- Local application modules, unresolved modules, and Node built-ins are not instrumented.
 
-```bash
-node --import dd-trace/initialize dist/server.mjs
-```
+### ESM proxy export detection
 
-**CJS output works without `--import`** because the plugin's CJS wrapper code intercepts `require()` calls at runtime.
+- Export detection is static. When parsing fails, the proxy falls back to a default export, so named exports can be incomplete.
+- Dynamic imports and some `export *` chains are not intercepted.
 
-| Bundler  | CJS Output | ESM Output          |
-| -------- | ---------- | ------------------- |
-| esbuild  | Works      | Limited (CJS deps)  |
-| Rollup   | Works      | Works               |
-| Rolldown | Works      | Works               |
-| Vite     | N/A        | Works               |
-| Webpack  | Works      | Requires `--import` |
-| Rspack   | Works      | Requires `--import` |
+### Worker threads
+
+Initialization is skipped in worker threads. The main thread's tracer is inherited, but if you need custom initialization in workers, create a separate register file for them.
 
 ## Examples
 
@@ -211,20 +302,6 @@ See the [examples](./examples) directory for complete working examples:
 - [esbuild + Express](./examples/esbuild-express)
 
 ## How It Works
-
-### Automatic Entry Wrapping
-
-The plugin uses the bundler's `isEntry` flag to automatically detect entry points. Detected entries are wrapped with virtual modules that import the init code first:
-
-```js
-// Generated wrapper for each entry point (init logic inlined)
-import ddTrace from "dd-trace";
-
-export * from "./original-entry";
-export { default } from "./original-entry";
-```
-
-This ensures dd-trace initializes before any HTTP modules are imported, enabling proper instrumentation.
 
 ### CommonJS Modules
 
@@ -253,6 +330,16 @@ import * as namespace from "original-module";
 // Re-exports with getters/setters for interception
 register(moduleUrl, _, set, get, rawImportPath);
 ```
+
+### The Register Helper
+
+The `--import unplugin-datadog-apm/register` flag runs before your application loads, ensuring:
+
+1. dd-trace initializes before any modules are imported
+2. The ESM loader hook is registered via `module.register()`
+3. TracerProvider is registered with the OpenTelemetry API
+
+This approach guarantees correct initialization order regardless of bundler or output format.
 
 ## License
 
