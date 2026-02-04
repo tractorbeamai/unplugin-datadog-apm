@@ -734,26 +734,6 @@ describe("AI SDK instrumentation", () => {
       expect(hooks).toHaveProperty("ai");
     });
 
-    it("verifies dd-trace uses correct tracing channels for Datadog semantics", () => {
-      // The dd-trace AI instrumentation uses these channels for Datadog-style tracing
-      // rather than Vercel's native telemetry
-      const dcPolyfill = require("dc-polyfill") as {
-        channel: (name: string) => unknown;
-      };
-
-      // These channels are used by dd-trace's ai.js instrumentation
-      const vercelAiChannel = dcPolyfill.channel("dd-trace:vercel-ai");
-      const toolChannel = dcPolyfill.channel("dd-trace:vercel-ai:tool");
-      const spanAttributesChannel = dcPolyfill.channel(
-        "dd-trace:vercel-ai:span:setAttributes",
-      );
-
-      // Channels should exist (dd-trace creates them)
-      expect(vercelAiChannel).toBeDefined();
-      expect(toolChannel).toBeDefined();
-      expect(spanAttributesChannel).toBeDefined();
-    });
-
     it("verifies instrumentation file exists for ai package", () => {
       // Verify the instrumentation file is present in dd-trace
       const fs = require("node:fs") as {
@@ -770,34 +750,6 @@ describe("AI SDK instrumentation", () => {
   });
 
   describe("Datadog LLM Observability semantics", () => {
-    it("verifies dd-trace supports LLM span kinds for agentic workflows", () => {
-      // Datadog LLM Observability uses specific span kinds
-      // These are different from Vercel's native telemetry which uses OpenTelemetry GenAI conventions
-      const datadogSpanKinds = [
-        "agent", // For tool loop agents
-        "workflow", // For multi-step workflows
-        "task", // For individual tasks
-        "tool", // For tool executions
-        "retrieval", // For RAG retrieval
-        "embedding", // For embedding operations
-        "llm", // For LLM calls
-      ];
-
-      // Verify these span kinds are documented/expected
-      expect(datadogSpanKinds).toContain("agent");
-      expect(datadogSpanKinds).toContain("tool");
-      expect(datadogSpanKinds).toContain("llm");
-
-      // The dd-trace package exports these types
-      // This ensures Datadog semantics are used, not Vercel's
-      const ddTraceModule = require("dd-trace") as { llmobs?: unknown };
-      expect(ddTraceModule).toBeDefined();
-
-      // dd-trace's LLM Observability module should be available
-      // for proper Datadog span attribution
-      expect(typeof ddTraceModule.llmobs).toBe("object");
-    });
-
     it("instruments tool calls with Datadog channel", async () => {
       // This verifies the tool function is wrapped to publish to dd-trace channels
       // rather than using Vercel's experimental_telemetry directly

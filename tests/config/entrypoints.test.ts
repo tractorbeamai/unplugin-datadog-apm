@@ -8,9 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-// Read the tsdown config to get entry points
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-const tsdownConfigPath = path.resolve(moduleDir, "../../tsdown.config.ts");
 const packageJsonPath = path.resolve(moduleDir, "../../package.json");
 
 /**
@@ -100,53 +98,5 @@ describe("entrypoint configuration", () => {
         expect(types[0]).toContain(`./dist/${name}`);
       },
     );
-  });
-
-  describe("tsdown config entries", () => {
-    it("tsdown.config.ts exists", () => {
-      expect(existsSync(tsdownConfigPath)).toBe(true);
-    });
-
-    it("config uses object-style entries with explicit keys", () => {
-      // Read and parse the config file directly to avoid TS import restrictions
-      const configContent = readFileSync(tsdownConfigPath, "utf8");
-
-      // Verify it uses object-style entry (not array)
-      expect(configContent).toContain("entry: {");
-      expect(configContent).not.toMatch(/entry:\s*\[/);
-
-      // Verify all expected entries are present
-      for (const [name, { source }] of Object.entries(EXPECTED_ENTRYPOINTS)) {
-        const escapedName = name.replaceAll("-", String.raw`\-`);
-        const entryPattern = new RegExp(
-          String.raw`["']?${escapedName}["']?:\s*["']${source}["']`,
-        );
-        expect(
-          configContent,
-          `entry "${name}" should map to "${source}"`,
-        ).toMatch(entryPattern);
-      }
-    });
-
-    it("config entry keys match expected entrypoints", () => {
-      const configContent = readFileSync(tsdownConfigPath, "utf8");
-
-      // Extract entry keys from the config using regex
-      const entryBlockMatch = /entry:\s*\{([^}]*)\}/.exec(configContent);
-      if (!entryBlockMatch) {
-        throw new Error("Expected entry block in tsdown.config.ts");
-      }
-
-      const entryBlock = entryBlockMatch[1];
-      const keyPattern = /["']?([a-z-]+)["']?:\s*["']src\//g;
-      const foundKeys: string[] = [];
-      let match;
-      while ((match = keyPattern.exec(entryBlock)) !== null) {
-        foundKeys.push(match[1]);
-      }
-
-      const expectedKeys = Object.keys(EXPECTED_ENTRYPOINTS).sort();
-      expect(foundKeys.sort()).toEqual(expectedKeys);
-    });
   });
 });

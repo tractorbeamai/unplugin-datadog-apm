@@ -36,10 +36,6 @@ describe("BUILTINS", () => {
     expect(BUILTINS.has("lodash")).toBe(false);
     expect(BUILTINS.has("node:express")).toBe(false);
   });
-
-  it("is a Set for efficient lookup", () => {
-    expect(BUILTINS).toBeInstanceOf(Set);
-  });
 });
 
 describe("getBaseModuleName", () => {

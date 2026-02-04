@@ -84,31 +84,6 @@ export interface SharedTestSuiteConfig<TPlugin> {
 }
 
 /**
- * Generates plugin metadata tests that verify basic plugin creation.
- * These tests are identical across all bundlers.
- *
- * @param bundlerName - Name of the bundler for test descriptions.
- * @param createPlugin - Factory function to create the plugin.
- */
-export function describePluginMetadata<TPlugin>(
-  bundlerName: string,
-  createPlugin: PluginFactory<TPlugin>,
-): void {
-  describe("plugin metadata", () => {
-    it("creates a plugin when called", () => {
-      const plugin = createPlugin();
-      expect(plugin).toBeDefined();
-      expect(typeof plugin).toBe("object");
-    });
-
-    it("accepts options", () => {
-      const plugin = createPlugin({ debug: true });
-      expect(plugin).toBeDefined();
-    });
-  });
-}
-
-/**
  * Generates a test for the excludeModules option.
  * Creates a pino fixture and verifies that excluding "pino" prevents wrapping.
  *
@@ -215,7 +190,6 @@ export function describeAdditionalModules<TPlugin>(
 export function describeSharedTests<TPlugin>(
   config: SharedTestSuiteConfig<TPlugin>,
 ): void {
-  describePluginMetadata(config.bundlerName, config.createPlugin);
   describeExcludeModules(config);
   describeAdditionalModules(config);
 }

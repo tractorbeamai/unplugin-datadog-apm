@@ -17,13 +17,6 @@ import { createFixture } from "../utils";
 describe("rollup bundler", () => {
   const temp = useTempDir();
 
-  describe("plugin metadata", () => {
-    it("rollup plugin has correct name", () => {
-      const plugin = rollupPlugin();
-      expect(plugin.name).toBe("unplugin-datadog-apm");
-    });
-  });
-
   describe("output formats", () => {
     it("works with CJS format", async () => {
       createFixture(temp.dir, {

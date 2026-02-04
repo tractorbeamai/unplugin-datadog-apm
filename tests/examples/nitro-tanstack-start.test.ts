@@ -14,7 +14,7 @@ const SCRIPT_PATH = path.join(__dirname, "nitro-tanstack-start.sh");
 describe("vite-nitro-tanstack-start example", () => {
   it("captures traces with --import register", () => {
     const result = execSync(`bash "${SCRIPT_PATH}"`, {
-      encoding: "utf-8",
+      encoding: "utf8",
       timeout: 60_000,
     });
     expect(result).toContain("All checks passed");

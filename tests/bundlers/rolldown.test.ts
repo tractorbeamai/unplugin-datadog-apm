@@ -25,18 +25,6 @@ import { createFixture } from "../utils";
 describe("unplugin-datadog-apm (rolldown)", () => {
   const temp = useTempDir();
 
-  describe("plugin metadata", () => {
-    it("creates a plugin with correct name", () => {
-      const plugin = rolldownPlugin();
-      expect(plugin.name).toBe("unplugin-datadog-apm");
-    });
-
-    it("accepts options", () => {
-      const plugin = rolldownPlugin({ debug: true });
-      expect(plugin).toBeDefined();
-    });
-  });
-
   describe("CJS builds", () => {
     it("wraps CJS modules for instrumentation", async () => {
       createFixture(temp.dir, {

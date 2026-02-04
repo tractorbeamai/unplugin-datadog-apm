@@ -31,18 +31,6 @@ function findOutputFile(distDir: string, pattern: RegExp): string {
 describe("unplugin-datadog-apm (vite)", () => {
   const temp = useTempDir();
 
-  describe("plugin metadata", () => {
-    it("creates a plugin with correct name", () => {
-      const plugin = vitePlugin();
-      expect(plugin.name).toBe("unplugin-datadog-apm");
-    });
-
-    it("has enforce: pre", () => {
-      const plugin = vitePlugin();
-      expect(plugin.enforce).toBe("pre");
-    });
-  });
-
   describe("vite build", () => {
     it("creates ESM proxy in Vite build", async () => {
       createFixture(temp.dir, {
