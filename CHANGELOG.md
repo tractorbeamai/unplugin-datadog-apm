@@ -1,5 +1,23 @@
 # unplugin-datadog-apm
 
+## 0.3.0
+
+### Minor Changes
+
+- ccc71a6: Rename register helper functions for clarity
+  - `setupTracer` is now `setupOpenTelemetry` - better describes what the function does (registers TracerProvider with the OpenTelemetry API)
+  - `registerLoaderHook` is now `setupESMImports` - better describes what the function does (enables dd-trace to instrument ESM modules)
+
+  The old function names are preserved as deprecated aliases for backwards compatibility and will be removed in a future major version.
+
+### Patch Changes
+
+- a985f1a: Fix Nitro externals plugin adding trailing slash to ESM proxy imports
+
+  When ESM proxy modules import their target packages (e.g., `pg`, `ai`), Nitro's externals plugin was rewriting bare specifiers like `"pg"` to `"pg/"`. This caused `ERR_PACKAGE_PATH_NOT_EXPORTED` errors at runtime because Node.js package exports don't include `"./"` as a valid subpath.
+
+  The fix marks imports from ESM proxy modules as `external: true` in the `resolveId` hook, preventing Nitro's externals plugin from processing and mangling these imports. This ensures packages like `pg` and `ai` remain properly instrumented while working correctly with Nitro/Vite builds.
+
 ## 0.2.3
 
 ### Patch Changes
