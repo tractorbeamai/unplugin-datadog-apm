@@ -42,10 +42,6 @@
       "types": "./dist/init.d.mts",
       "default": "./dist/init.mjs"
     },
-    "./nitro-plugin": {
-      "types": "./dist/nitro-plugin.d.mts",
-      "default": "./dist/nitro-plugin.mjs"
-    },
     "./register": {
       "types": "./dist/register.d.mts",
       "default": "./dist/register.mjs"
