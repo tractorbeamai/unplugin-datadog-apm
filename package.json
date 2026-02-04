@@ -1,6 +1,6 @@
 {
   "name": "unplugin-datadog-apm",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Unplugin for Datadog APM instrumentation in bundled Node.js applications",
   "keywords": [
     "unplugin",
