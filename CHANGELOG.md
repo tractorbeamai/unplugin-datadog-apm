@@ -1,5 +1,12 @@
 # unplugin-datadog-apm
 
+## 0.2.3
+
+### Patch Changes
+
+- 5ef2398: Remove unused `nitro-plugin` export. This module was never integrated into the Vite plugin and provided no functionality. Users should use `--import unplugin-datadog-apm/register` for initialization instead.
+- 7eefd60: Add workaround for dd-trace URL instrumentation error on Node.js 22+. Disable URL instrumentation in nitro example and document the workaround in KNOWN_ISSUES.md.
+
 ## 0.2.2
 
 ### Patch Changes
