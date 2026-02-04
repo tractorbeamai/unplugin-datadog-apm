@@ -4,6 +4,8 @@
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
 [![CI][ci-src]][ci-href]
 
+> **Note**: This is an unofficial, community-maintained project. It is not affiliated with, endorsed by, or supported by Datadog, Inc.
+
 Build-time plugin for Datadog APM instrumentation in bundled Node.js applications. Enables `dd-trace` to instrument bundled modules by wrapping them at build time. This plugin does not instrument anything itself; `dd-trace` still performs the runtime instrumentation, and this plugin only injects the hooks needed for auto-instrumentation to work in a bundle.
 
 ## Why?
@@ -341,9 +343,11 @@ The `--import unplugin-datadog-apm/register` flag runs before your application l
 
 This approach guarantees correct initialization order regardless of bundler or output format.
 
-## License
+## Legal
 
-[MIT](./LICENSE) License
+This project is [MIT](./LICENSE) licensed.
+
+Datadog is a trademark of Datadog, Inc. This project is not affiliated with Datadog, Inc.
 
 <!-- Badges -->
 
