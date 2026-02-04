@@ -1,12 +1,10 @@
 import type { ConsolaInstance } from "consola";
 
-import { ROLLUP_EXTERNALS } from "../core/constants";
 import { convertCJSWrapperToESM } from "../core/convert-cjs-wrapper";
-import { mergeExternals } from "../core/externals";
 import { isEsmFormat } from "../core/format";
 
 export interface RollupLikeConfig {
-  options?: (options: { external?: unknown }) => void;
+  options?: () => void;
   outputOptions?: (options: { format?: string }) => void;
   renderChunk?: (
     code: string,
@@ -24,6 +22,10 @@ interface RollupLikeConfigOptions {
 
 /**
  * Create configuration hooks shared by rollup-like bundlers.
+ *
+ * Externals are no longer auto-injected. Use `DatadogAPM.externals` to get
+ * the list of modules that should be externalized and add them to your
+ * bundler config manually.
  *
  * @param options - Logger and callbacks for output format handling.
  */
@@ -46,14 +48,10 @@ export function createRollupLikeConfig({
 
   return {
     /**
-     * Inject dd-trace externals into the bundler options.
-     *
-     * @param options - Rollup input options to mutate.
+     * Initialize rollup-like bundler hooks.
      */
-    options(options) {
+    options() {
       setUsesRenderChunkWrapperConversion(true);
-      options.external = mergeExternals(options.external, ROLLUP_EXTERNALS);
-      logger.debug(`Added ${bundlerName} externals for dd-trace`);
     },
     // Rollup uses outputOptions hook to detect format, rolldown detects in renderChunk
     outputOptions: bundlerName === "rollup" ? handleOutputOptions : undefined,

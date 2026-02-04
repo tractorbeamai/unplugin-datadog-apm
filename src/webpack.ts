@@ -4,10 +4,22 @@
  * @module
  */
 
+import { ROLLUP_EXTERNALS } from "./core/constants";
 import { DatadogAPM } from "./index";
 
 /**
- * Webpack plugin
+ * Webpack plugin with externals list.
+ */
+type WebpackPlugin = typeof DatadogAPM.webpack & {
+  /**
+   * List of modules that should be externalized for dd-trace compatibility.
+   * Includes RegExp patterns for subpath imports.
+   */
+  externals: (string | RegExp)[];
+};
+
+/**
+ * Webpack plugin for Datadog APM.
  *
  * @example
  * ```js
@@ -16,8 +28,11 @@ import { DatadogAPM } from "./index";
  *
  * export default {
  *   plugins: [DatadogAPM()],
+ *   externals: DatadogAPM.externals,
  * }
  * ```
  */
-const webpack: typeof DatadogAPM.webpack = DatadogAPM.webpack;
+const webpack = DatadogAPM.webpack as WebpackPlugin;
+webpack.externals = ROLLUP_EXTERNALS;
+
 export default webpack;

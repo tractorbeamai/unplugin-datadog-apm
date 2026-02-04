@@ -17,6 +17,19 @@ import { createFixture } from "../utils";
 describe("rollup bundler", () => {
   const temp = useTempDir();
 
+  describe("externals export", () => {
+    it("exports externals list with RegExp patterns", () => {
+      expect(rollupPlugin.externals).toBeDefined();
+      expect(Array.isArray(rollupPlugin.externals)).toBe(true);
+      expect(rollupPlugin.externals).toContain("dd-trace");
+      expect(rollupPlugin.externals).toContain("dc-polyfill");
+      expect(rollupPlugin.externals).toContain("import-in-the-middle");
+      // Should include RegExp patterns for rollup
+      const hasRegex = rollupPlugin.externals.some((e) => e instanceof RegExp);
+      expect(hasRegex).toBe(true);
+    });
+  });
+
   describe("output formats", () => {
     it("works with CJS format", async () => {
       createFixture(temp.dir, {
@@ -31,7 +44,7 @@ describe("rollup bundler", () => {
           nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
-        external: ["dc-polyfill"],
+        external: rollupPlugin.externals,
       });
 
       const result = await bundle.generate({ format: "cjs" });
@@ -52,7 +65,7 @@ describe("rollup bundler", () => {
           rollupPlugin({ debug: false }),
           nodeResolve({ rootDir: temp.dir }),
         ],
-        external: ["import-in-the-middle/lib/register.js"],
+        external: rollupPlugin.externals,
       });
 
       const result = await bundle.generate({ format: "es" });
@@ -74,7 +87,7 @@ describe("rollup bundler", () => {
           nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
-        external: ["dc-polyfill"],
+        external: rollupPlugin.externals,
       });
 
       const result = await bundle.generate({
@@ -100,7 +113,7 @@ describe("rollup bundler", () => {
           nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
-        external: ["dc-polyfill"],
+        external: rollupPlugin.externals,
       });
 
       const result = await bundle.generate({ format: "umd", name: "MyBundle" });
@@ -123,7 +136,7 @@ describe("rollup bundler", () => {
           nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
-        external: ["dc-polyfill"],
+        external: rollupPlugin.externals,
       });
 
       const result = await bundle.generate({ format: "amd" });
@@ -146,7 +159,7 @@ describe("rollup bundler", () => {
           nodeResolve({ rootDir: temp.dir }),
           commonjs(),
         ],
-        external: ["dc-polyfill"],
+        external: rollupPlugin.externals,
       });
 
       const result = await bundle.generate({ format: "cjs", sourcemap: true });

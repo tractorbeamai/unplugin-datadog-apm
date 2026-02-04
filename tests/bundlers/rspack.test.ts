@@ -31,6 +31,19 @@ import { createFixture } from "../utils";
 describe("unplugin-datadog-apm (rspack)", () => {
   const temp = useTempDir();
 
+  describe("externals export", () => {
+    it("exports externals list with RegExp patterns", () => {
+      expect(rspackPlugin.externals).toBeDefined();
+      expect(Array.isArray(rspackPlugin.externals)).toBe(true);
+      expect(rspackPlugin.externals).toContain("dd-trace");
+      expect(rspackPlugin.externals).toContain("dc-polyfill");
+      expect(rspackPlugin.externals).toContain("import-in-the-middle");
+      // Should include RegExp patterns for rspack
+      const hasRegex = rspackPlugin.externals.some((e) => e instanceof RegExp);
+      expect(hasRegex).toBe(true);
+    });
+  });
+
   // Shared tests for plugin metadata, excludeModules, and additionalModules
   describeSharedTests({
     bundlerName: "rspack",
@@ -47,6 +60,7 @@ describe("unplugin-datadog-apm (rspack)", () => {
         },
         target: "node",
         plugins: [plugin as RspackPluginInstance],
+        externals: rspackPlugin.externals,
         optimization: {
           minimize: false,
         },
@@ -68,7 +82,7 @@ describe("unplugin-datadog-apm (rspack)", () => {
         },
         target: "node",
         plugins: [plugin as RspackPluginInstance],
-        externals: ["dc-polyfill"],
+        externals: rspackPlugin.externals,
         optimization: {
           minimize: false,
         },
@@ -98,7 +112,7 @@ describe("unplugin-datadog-apm (rspack)", () => {
         },
         target: "node",
         plugins: [rspackPlugin()],
-        externals: ["dc-polyfill"],
+        externals: rspackPlugin.externals,
         optimization: {
           minimize: false,
         },
@@ -136,7 +150,7 @@ describe("unplugin-datadog-apm (rspack)", () => {
         },
         target: "node",
         plugins: [rspackPlugin()],
-        externals: ["import-in-the-middle/lib/register.js"],
+        externals: rspackPlugin.externals,
         experiments: {
           outputModule: true,
         },
@@ -174,6 +188,7 @@ describe("unplugin-datadog-apm (rspack)", () => {
         },
         target: "node",
         plugins: [rspackPlugin({ excludeModules: ["undici"] })],
+        externals: rspackPlugin.externals,
         experiments: {
           outputModule: true,
         },
@@ -211,7 +226,7 @@ describe("unplugin-datadog-apm (rspack)", () => {
         },
         target: "node",
         plugins: [rspackPlugin()],
-        externals: ["dc-polyfill"],
+        externals: rspackPlugin.externals,
         experiments: {
           outputModule: true,
         },
@@ -255,7 +270,7 @@ describe("unplugin-datadog-apm (rspack)", () => {
         },
         target: "node",
         plugins: [rspackPlugin()],
-        externals: ["dc-polyfill"],
+        externals: rspackPlugin.externals,
         optimization: {
           minimize: false,
         },

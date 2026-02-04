@@ -4,10 +4,22 @@
  * @module
  */
 
+import { ROLLUP_EXTERNALS } from "./core/constants";
 import { DatadogAPM } from "./index";
 
 /**
- * Rollup plugin
+ * Rollup plugin with externals list.
+ */
+type RollupPlugin = typeof DatadogAPM.rollup & {
+  /**
+   * List of modules that should be externalized for dd-trace compatibility.
+   * Includes RegExp patterns for subpath imports.
+   */
+  externals: (string | RegExp)[];
+};
+
+/**
+ * Rollup plugin for Datadog APM.
  *
  * @example
  * ```ts
@@ -16,8 +28,11 @@ import { DatadogAPM } from "./index";
  *
  * export default {
  *   plugins: [DatadogAPM()],
+ *   external: DatadogAPM.externals,
  * }
  * ```
  */
-const rollup: typeof DatadogAPM.rollup = DatadogAPM.rollup;
+const rollup = DatadogAPM.rollup as RollupPlugin;
+rollup.externals = ROLLUP_EXTERNALS;
+
 export default rollup;

@@ -25,6 +25,21 @@ import { createFixture } from "../utils";
 describe("unplugin-datadog-apm (rolldown)", () => {
   const temp = useTempDir();
 
+  describe("externals export", () => {
+    it("exports externals list with RegExp patterns", () => {
+      expect(rolldownPlugin.externals).toBeDefined();
+      expect(Array.isArray(rolldownPlugin.externals)).toBe(true);
+      expect(rolldownPlugin.externals).toContain("dd-trace");
+      expect(rolldownPlugin.externals).toContain("dc-polyfill");
+      expect(rolldownPlugin.externals).toContain("import-in-the-middle");
+      // Should include RegExp patterns for rolldown
+      const hasRegex = rolldownPlugin.externals.some(
+        (e) => e instanceof RegExp,
+      );
+      expect(hasRegex).toBe(true);
+    });
+  });
+
   describe("CJS builds", () => {
     it("wraps CJS modules for instrumentation", async () => {
       createFixture(temp.dir, {
@@ -35,7 +50,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
       const bundle = await rolldown({
         input: path.join(temp.dir, "index.js"),
         plugins: [rolldownPlugin()],
-        external: ["dc-polyfill"],
+        external: rolldownPlugin.externals,
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],
         },
@@ -62,6 +77,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
       const bundle = await rolldown({
         input: path.join(temp.dir, "index.js"),
         plugins: [rolldownPlugin({ excludeModules: ["pino"] })],
+        external: rolldownPlugin.externals,
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],
         },
@@ -91,7 +107,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
             additionalModules: ["custom-pkg"],
           }),
         ],
-        external: ["dc-polyfill"],
+        external: rolldownPlugin.externals,
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],
         },
@@ -120,7 +136,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
       const bundle = await rolldown({
         input: path.join(temp.dir, "index.js"),
         plugins: [rolldownPlugin()],
-        external: ["import-in-the-middle/lib/register.js"],
+        external: rolldownPlugin.externals,
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],
         },
@@ -148,7 +164,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
       const bundle = await rolldown({
         input: path.join(temp.dir, "index.js"),
         plugins: [rolldownPlugin()],
-        external: ["import-in-the-middle/lib/register.js"],
+        external: rolldownPlugin.externals,
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],
         },
@@ -172,7 +188,7 @@ describe("unplugin-datadog-apm (rolldown)", () => {
       const bundle = await rolldown({
         input: path.join(temp.dir, "index.js"),
         plugins: [rolldownPlugin()],
-        external: ["dc-polyfill"],
+        external: rolldownPlugin.externals,
         resolve: {
           modules: [path.join(temp.dir, "node_modules")],
         },

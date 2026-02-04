@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { build } from "vite";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import vitePlugin from "../../src/vite";
 import {
@@ -31,6 +31,20 @@ function findOutputFile(distDir: string, pattern: RegExp): string {
 describe("unplugin-datadog-apm (vite)", () => {
   const temp = useTempDir();
 
+  describe("externals export", () => {
+    it("exports externals list as string array", () => {
+      expect(vitePlugin.externals).toBeDefined();
+      expect(Array.isArray(vitePlugin.externals)).toBe(true);
+      expect(vitePlugin.externals).toContain("dd-trace");
+      expect(vitePlugin.externals).toContain("dc-polyfill");
+      expect(vitePlugin.externals).toContain("import-in-the-middle");
+      // Should be strings only for vite
+      expect(vitePlugin.externals.every((e) => typeof e === "string")).toBe(
+        true,
+      );
+    });
+  });
+
   describe("vite build", () => {
     it("creates ESM proxy in Vite build", async () => {
       createFixture(temp.dir, {
@@ -50,7 +64,7 @@ describe("unplugin-datadog-apm (vite)", () => {
             fileName: "bundle",
           },
           rollupOptions: {
-            external: ["import-in-the-middle/lib/register.js"],
+            external: [...vitePlugin.externals],
           },
         },
         plugins: [vitePlugin({ debug: false })],
@@ -82,6 +96,9 @@ describe("unplugin-datadog-apm (vite)", () => {
           },
           commonjsOptions: {
             include: [/node_modules/],
+          },
+          rollupOptions: {
+            external: [...vitePlugin.externals],
           },
         },
         ssr: {

@@ -31,6 +31,19 @@ import { createFixture } from "../utils";
 describe("unplugin-datadog-apm (webpack)", () => {
   const temp = useTempDir();
 
+  describe("externals export", () => {
+    it("exports externals list with RegExp patterns", () => {
+      expect(webpackPlugin.externals).toBeDefined();
+      expect(Array.isArray(webpackPlugin.externals)).toBe(true);
+      expect(webpackPlugin.externals).toContain("dd-trace");
+      expect(webpackPlugin.externals).toContain("dc-polyfill");
+      expect(webpackPlugin.externals).toContain("import-in-the-middle");
+      // Should include RegExp patterns for webpack
+      const hasRegex = webpackPlugin.externals.some((e) => e instanceof RegExp);
+      expect(hasRegex).toBe(true);
+    });
+  });
+
   // Shared tests for plugin metadata, excludeModules, and additionalModules
   describeSharedTests({
     bundlerName: "webpack",
@@ -48,6 +61,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
         },
         target: "node",
         plugins: [plugin as webpack.WebpackPluginInstance],
+        externals: webpackPlugin.externals,
         optimization: {
           minimize: false,
         },
@@ -70,7 +84,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
         },
         target: "node",
         plugins: [plugin as webpack.WebpackPluginInstance],
-        externals: ["dc-polyfill"],
+        externals: webpackPlugin.externals,
         optimization: {
           minimize: false,
         },
@@ -101,7 +115,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
         },
         target: "node",
         plugins: [webpackPlugin()],
-        externals: ["dc-polyfill"],
+        externals: webpackPlugin.externals,
         optimization: {
           minimize: false,
         },
@@ -120,7 +134,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
       expect(output).toContain("dc-polyfill");
     });
 
-    it("preserves function-based externals alongside plugin externals", async () => {
+    it("works with function-based externals combined with plugin externals", async () => {
       createFixture(temp.dir, {
         "index.js": `
           const pino = require('pino');
@@ -144,8 +158,9 @@ describe("unplugin-datadog-apm (webpack)", () => {
         },
         target: "node",
         plugins: [webpackPlugin()],
-        // Test with function-based externals (webpack supports this format)
+        // Combine plugin externals with custom function-based externals
         externals: [
+          ...webpackPlugin.externals,
           ({ request }, callback) => {
             if (request === "custom-external") {
               externalizedByFunction.push(request);
@@ -202,7 +217,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
         },
         target: "node",
         plugins: [webpackPlugin()],
-        externals: ["import-in-the-middle/lib/register.js"],
+        externals: webpackPlugin.externals,
         experiments: {
           outputModule: true,
         },
@@ -241,6 +256,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
         },
         target: "node",
         plugins: [webpackPlugin({ excludeModules: ["undici"] })],
+        externals: webpackPlugin.externals,
         experiments: {
           outputModule: true,
         },
@@ -279,7 +295,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
         },
         target: "node",
         plugins: [webpackPlugin()],
-        externals: ["dc-polyfill"],
+        externals: webpackPlugin.externals,
         experiments: {
           outputModule: true,
         },
@@ -324,7 +340,7 @@ describe("unplugin-datadog-apm (webpack)", () => {
         },
         target: "node",
         plugins: [webpackPlugin()],
-        externals: ["dc-polyfill"],
+        externals: webpackPlugin.externals,
         optimization: {
           minimize: false,
         },

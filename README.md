@@ -44,6 +44,8 @@ import DatadogAPM from "unplugin-datadog-apm/vite";
 
 export default defineConfig({
   plugins: [DatadogAPM()],
+  ssr: { external: DatadogAPM.externals },
+  build: { rollupOptions: { external: DatadogAPM.externals } },
 });
 ```
 
@@ -134,6 +136,8 @@ node --import ./scripts/datadog-register.mjs dist/server.js
 
 ## Bundler Setup
 
+Each bundler import provides a `.externals` property with the list of modules that must be externalized for dd-trace to work correctly.
+
 <details>
 <summary>Vite</summary><br>
 
@@ -143,6 +147,8 @@ import DatadogAPM from "unplugin-datadog-apm/vite";
 
 export default defineConfig({
   plugins: [DatadogAPM()],
+  ssr: { external: DatadogAPM.externals },
+  build: { rollupOptions: { external: DatadogAPM.externals } },
 });
 ```
 
@@ -157,14 +163,7 @@ import DatadogAPM from "unplugin-datadog-apm/rollup";
 
 export default {
   plugins: [DatadogAPM()],
-  external: [
-    "dd-trace",
-    "dc-polyfill",
-    "import-in-the-middle",
-    "@opentelemetry/api",
-    "@openfeature/core",
-    "unplugin-datadog-apm",
-  ],
+  external: DatadogAPM.externals,
 };
 ```
 
@@ -179,6 +178,7 @@ import DatadogAPM from "unplugin-datadog-apm/rolldown";
 
 export default {
   plugins: [DatadogAPM()],
+  external: DatadogAPM.externals,
 };
 ```
 
@@ -193,14 +193,7 @@ import DatadogAPM from "unplugin-datadog-apm/esbuild";
 
 build({
   plugins: [DatadogAPM()],
-  external: [
-    "dd-trace",
-    "dc-polyfill",
-    "import-in-the-middle",
-    "@opentelemetry/api",
-    "@openfeature/core",
-    "unplugin-datadog-apm",
-  ],
+  external: DatadogAPM.externals,
 });
 ```
 
@@ -215,14 +208,7 @@ import DatadogAPM from "unplugin-datadog-apm/webpack";
 
 export default {
   plugins: [DatadogAPM()],
-  externals: [
-    "dd-trace",
-    "dc-polyfill",
-    "import-in-the-middle",
-    "@opentelemetry/api",
-    "@openfeature/core",
-    "unplugin-datadog-apm",
-  ],
+  externals: DatadogAPM.externals,
 };
 ```
 
@@ -237,6 +223,7 @@ import DatadogAPM from "unplugin-datadog-apm/rspack";
 
 export default {
   plugins: [DatadogAPM()],
+  externals: DatadogAPM.externals,
 };
 ```
 
@@ -268,7 +255,7 @@ For package.json scripts:
 
 ## Important Notes
 
-- **Externalize runtime deps**: You must externalize `dd-trace`, `dc-polyfill`, `import-in-the-middle`, `@opentelemetry/api`, `@openfeature/core`, and `unplugin-datadog-apm` in your bundler config. These are runtime dependencies that should not be bundled.
+- **Externalize runtime deps**: Use `DatadogAPM.externals` in your bundler's external config. This exports the list of modules (`dd-trace`, `dc-polyfill`, `import-in-the-middle`, etc.) that must not be bundled for dd-trace to work correctly.
 - **esbuild constraints**: See "Limitations and Caveats" for `minify`/`keepNames` requirements.
 - **Plugin order**: The plugin uses `enforce: 'pre'` to run before other transforms.
 - **Module detection**: The plugin uses dd-trace's internal utilities to detect which modules are instrumentable and whether they're ESM or CommonJS.

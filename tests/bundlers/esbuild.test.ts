@@ -1,9 +1,8 @@
 /**
  * Tests for esbuild integration.
- * Verifies ESM and CJS builds, auto-externalization, git metadata injection, and module wrapping.
+ * Verifies ESM and CJS builds, git metadata injection, and module wrapping.
  */
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
 
 import * as esbuild from "esbuild";
@@ -22,6 +21,20 @@ import { createFixture } from "../utils";
 describe("unplugin-datadog-apm (esbuild)", () => {
   const temp = useTempDir();
 
+  describe("externals export", () => {
+    it("exports externals list as string array", () => {
+      expect(esbuildPlugin.externals).toBeDefined();
+      expect(Array.isArray(esbuildPlugin.externals)).toBe(true);
+      expect(esbuildPlugin.externals).toContain("dd-trace");
+      expect(esbuildPlugin.externals).toContain("dc-polyfill");
+      expect(esbuildPlugin.externals).toContain("import-in-the-middle");
+      // Should be strings only for esbuild
+      expect(esbuildPlugin.externals.every((e) => typeof e === "string")).toBe(
+        true,
+      );
+    });
+  });
+
   describe("ESM builds", () => {
     it("wraps CJS modules for instrumentation", async () => {
       createFixture(temp.dir, {
@@ -36,8 +49,7 @@ describe("unplugin-datadog-apm (esbuild)", () => {
         format: "esm",
         outfile: path.join(temp.dir, "dist/bundle.mjs"),
         plugins: [esbuildPlugin()],
-        // dc-polyfill is external since it's not in the test fixture
-        external: ["dc-polyfill"],
+        external: [...esbuildPlugin.externals],
       });
 
       const output = readFileSync(
@@ -62,6 +74,7 @@ describe("unplugin-datadog-apm (esbuild)", () => {
         format: "esm",
         outfile: path.join(temp.dir, "dist/bundle.mjs"),
         plugins: [esbuildPlugin()],
+        external: [...esbuildPlugin.externals],
       });
 
       const output = readFileSync(
@@ -111,8 +124,7 @@ describe("unplugin-datadog-apm (esbuild)", () => {
         format: "cjs",
         outfile: path.join(temp.dir, "dist/bundle.cjs"),
         plugins: [esbuildPlugin()],
-        // dc-polyfill is external since it's not in the test fixture
-        external: ["dc-polyfill"],
+        external: [...esbuildPlugin.externals],
       });
 
       const output = readFileSync(
@@ -122,114 +134,6 @@ describe("unplugin-datadog-apm (esbuild)", () => {
 
       // Should wrap CJS module with dd-trace channel
       expectInstrumented(output);
-    });
-  });
-
-  describe("auto-externalization", () => {
-    it("auto-externalizes dd-trace", async () => {
-      createFixture(temp.dir, {
-        "index.ts": `import tracer from 'dd-trace'; console.log(tracer);`,
-      });
-
-      await esbuild.build({
-        entryPoints: [path.join(temp.dir, "index.ts")],
-        bundle: true,
-        platform: "node",
-        format: "esm",
-        outfile: path.join(temp.dir, "dist/bundle.mjs"),
-        plugins: [esbuildPlugin()],
-      });
-
-      const output = readFileSync(
-        path.join(temp.dir, "dist/bundle.mjs"),
-        "utf8",
-      );
-
-      // dd-trace should be external (imported, not bundled)
-      expect(output).toMatch(/import\s+(?:\S.*)?from\s+["']dd-trace["']/);
-    });
-
-    it("auto-externalizes @opentelemetry/api", async () => {
-      createFixture(temp.dir, {
-        "index.ts": `import { trace } from '@opentelemetry/api'; console.log(trace);`,
-      });
-
-      await esbuild.build({
-        entryPoints: [path.join(temp.dir, "index.ts")],
-        bundle: true,
-        platform: "node",
-        format: "esm",
-        outfile: path.join(temp.dir, "dist/bundle.mjs"),
-        plugins: [esbuildPlugin()],
-      });
-
-      const output = readFileSync(
-        path.join(temp.dir, "dist/bundle.mjs"),
-        "utf8",
-      );
-
-      // @opentelemetry/api should be external
-      expect(output).toMatch(
-        /import\s+(?:\S.*)?from\s+["']@opentelemetry\/api["']/,
-      );
-    });
-
-    it("preserves user-specified externals", async () => {
-      createFixture(temp.dir, {
-        "index.ts": `import express from 'express'; console.log(express);`,
-      });
-
-      await esbuild.build({
-        entryPoints: [path.join(temp.dir, "index.ts")],
-        bundle: true,
-        platform: "node",
-        format: "esm",
-        outfile: path.join(temp.dir, "dist/bundle.mjs"),
-        plugins: [esbuildPlugin()],
-        external: ["express"],
-      });
-
-      const output = readFileSync(
-        path.join(temp.dir, "dist/bundle.mjs"),
-        "utf8",
-      );
-
-      // User-specified external should be preserved
-      expect(output).toMatch(/import\s+(?:\S.*)?from\s+["']express["']/);
-    });
-
-    it("externalizes @openfeature/core when missing", async () => {
-      const require = createRequire(import.meta.url);
-      let hasOpenFeature = true;
-      try {
-        require.resolve("@openfeature/core");
-      } catch {
-        hasOpenFeature = false;
-      }
-
-      createFixture(temp.dir, {
-        "index.ts": `import { OpenFeature } from '@openfeature/core'; console.log(OpenFeature);`,
-      });
-
-      await esbuild.build({
-        entryPoints: [path.join(temp.dir, "index.ts")],
-        bundle: true,
-        platform: "node",
-        format: "esm",
-        outfile: path.join(temp.dir, "dist/bundle.mjs"),
-        plugins: [esbuildPlugin()],
-      });
-
-      const output = readFileSync(
-        path.join(temp.dir, "dist/bundle.mjs"),
-        "utf8",
-      );
-
-      if (!hasOpenFeature) {
-        expect(output).toMatch(
-          /import\s+(?:\S.*)?from\s+["']@openfeature\/core["']/,
-        );
-      }
     });
   });
 
@@ -271,8 +175,7 @@ describe("unplugin-datadog-apm (esbuild)", () => {
         format: "cjs",
         outfile: path.join(temp.dir, "dist/bundle.cjs"),
         plugins: [esbuildPlugin({ additionalModules: ["custom-pkg"] })],
-        // dc-polyfill is external since it's not in the test fixture
-        external: ["dc-polyfill"],
+        external: [...esbuildPlugin.externals],
       });
 
       const output = readFileSync(

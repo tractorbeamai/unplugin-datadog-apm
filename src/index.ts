@@ -421,13 +421,9 @@ const createDatadogApmPlugin: UnpluginFactory<Options | undefined, false> = (
       setUsesRenderChunkWrapperConversion: handleRenderChunkWrapperConversion,
     }),
 
-    webpack: createWebpackConfig({
-      logger,
-    }),
+    webpack: createWebpackConfig(),
 
-    rspack: createRspackConfig({
-      logger,
-    }),
+    rspack: createRspackConfig(),
 
     vite: createViteConfig({
       debug,

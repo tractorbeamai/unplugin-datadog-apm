@@ -1,8 +1,3 @@
-import type { ConsolaInstance } from "consola";
-
-import { ROLLUP_EXTERNALS } from "../core/constants";
-import { appendExternals } from "../core/externals";
-
 interface WebpackLikeCompiler {
   options: { externals?: unknown };
 }
@@ -10,24 +5,29 @@ interface WebpackLikeCompiler {
 type WebpackLikeHook = (compiler: WebpackLikeCompiler) => void;
 
 interface WebpackLikeConfigOptions {
-  logger: ConsolaInstance;
   bundlerName: "webpack" | "rspack";
 }
 
 /**
- * Create a webpack-style compiler hook for dd-trace externals.
- *
- * @param options - Logger and bundler name for diagnostics.
+ * No-op hook function for webpack-style bundlers.
+ * Externals are now configured manually by the user.
  */
-export function createWebpackLikeConfig({
-  logger,
-  bundlerName,
-}: WebpackLikeConfigOptions): WebpackLikeHook {
-  return (compiler) => {
-    compiler.options.externals = appendExternals(
-      compiler.options.externals,
-      ROLLUP_EXTERNALS,
-    );
-    logger.debug(`Added ${bundlerName} externals for dd-trace`);
-  };
+function noopHook(): void {
+  // No-op: externals are now configured manually by the user
+}
+
+/**
+ * Create a webpack-style compiler hook.
+ *
+ * Externals are no longer auto-injected. Use `DatadogAPM.externals` to get
+ * the list of modules that should be externalized and add them to your
+ * webpack config manually.
+ *
+ * @param _options - Options (unused after externals removal).
+ * @returns No-op hook function.
+ */
+export function createWebpackLikeConfig(
+  _options: WebpackLikeConfigOptions,
+): WebpackLikeHook {
+  return noopHook;
 }
