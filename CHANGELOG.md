@@ -1,5 +1,11 @@
 # unplugin-datadog-apm
 
+## 0.2.1
+
+### Patch Changes
+
+- chore: test release workflow
+
 ## 0.2.0
 
 ### Minor Changes
