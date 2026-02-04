@@ -29,7 +29,7 @@ import { isMainThread } from "node:worker_threads";
 import type { Tracer } from "dd-trace";
 
 import { IITM_EXCLUSION_PATTERNS } from "./core/constants";
-import { setupTracer } from "./register-helpers";
+import { setupOpenTelemetry } from "./register-helpers";
 
 /**
  * Initialize dd-trace with settings from environment variables.
@@ -66,6 +66,6 @@ function registerLoaderHook(): void {
 // Only initialize on main thread (worker threads inherit the tracer)
 if (isMainThread) {
   const tracer = initTracer();
-  setupTracer(tracer);
+  setupOpenTelemetry(tracer);
   registerLoaderHook();
 }

@@ -8,13 +8,13 @@
  *
  *   // my-register.mjs
  *   import tracer from 'dd-trace';
- *   import { setupTracer, registerLoaderHook } from 'unplugin-datadog-apm/register-helpers';
+ *   import { setupOpenTelemetry, setupESMImports } from 'unplugin-datadog-apm/register-helpers';
  *
  *   tracer.init({ service: 'my-app' });
  *   tracer.use('http', { hooks: { request: (span, req) => { ... } } });
  *
- *   setupTracer(tracer);
- *   registerLoaderHook();
+ *   setupOpenTelemetry(tracer);
+ *   setupESMImports();
  *
  * Then run with:
  *   node --import ./my-register.mjs dist/server.js
@@ -36,7 +36,7 @@ import { IITM_EXCLUSION_PATTERNS } from "./core/constants";
  *
  * @param tracer - The initialized dd-trace tracer instance.
  */
-export function setupTracer(tracer: Tracer): void {
+export function setupOpenTelemetry(tracer: Tracer): void {
   const tracerProvider = new tracer.TracerProvider();
   tracerProvider.register();
 
@@ -48,6 +48,14 @@ export function setupTracer(tracer: Tracer): void {
 }
 
 /**
+ * Register the TracerProvider with the OpenTelemetry API.
+ *
+ * @param tracer - The initialized dd-trace tracer instance.
+ * @deprecated Use `setupOpenTelemetry` instead. Will be removed in a future major version.
+ */
+export const setupTracer: typeof setupOpenTelemetry = setupOpenTelemetry;
+
+/**
  * Register the ESM loader hook for dd-trace instrumentation.
  *
  * This enables dd-trace to instrument ESM modules loaded after registration.
@@ -55,7 +63,7 @@ export function setupTracer(tracer: Tracer): void {
  *
  * @param exclusions - Optional patterns for modules to exclude from instrumentation.
  */
-export function registerLoaderHook(
+export function setupESMImports(
   exclusions: (string | RegExp)[] = IITM_EXCLUSION_PATTERNS,
 ): void {
   register("dd-trace/loader-hook.mjs", import.meta.url, {
@@ -66,6 +74,14 @@ export function registerLoaderHook(
     console.log("[unplugin-datadog-apm] ESM loader hook registered");
   }
 }
+
+/**
+ * Register the ESM loader hook for dd-trace instrumentation.
+ *
+ * @param exclusions - Optional patterns for modules to exclude from instrumentation.
+ * @deprecated Use `setupESMImports` instead. Will be removed in a future major version.
+ */
+export const registerLoaderHook: typeof setupESMImports = setupESMImports;
 
 /**
  * Default IITM exclusion patterns for modules that break under import-in-the-middle.

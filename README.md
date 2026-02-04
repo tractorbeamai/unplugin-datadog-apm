@@ -95,8 +95,8 @@ For advanced configuration (custom `tracer.use()` calls, sampling rules, hooks),
 // scripts/datadog-register.mjs
 import tracer from "dd-trace";
 import {
-  registerLoaderHook,
-  setupTracer,
+  setupESMImports,
+  setupOpenTelemetry,
 } from "unplugin-datadog-apm/register-helpers";
 
 tracer.init({
@@ -124,8 +124,8 @@ tracer.use("express", {
   },
 });
 
-setupTracer(tracer);
-registerLoaderHook();
+setupOpenTelemetry(tracer);
+setupESMImports();
 ```
 
 Then run with your custom register:

@@ -11,6 +11,8 @@ import { IITM_EXCLUSION_PATTERNS } from "../../src/core/constants";
 import {
   IITM_EXCLUSION_PATTERNS as ReexportedPatterns,
   registerLoaderHook,
+  setupESMImports,
+  setupOpenTelemetry,
   setupTracer,
 } from "../../src/register-helpers";
 
@@ -39,10 +41,10 @@ describe("register-helpers", () => {
     }
   });
 
-  describe("setupTracer", () => {
+  describe("setupOpenTelemetry", () => {
     it("registers TracerProvider without throwing", () => {
       expect(() => {
-        setupTracer(tracer);
+        setupOpenTelemetry(tracer);
       }).not.toThrow();
     });
 
@@ -50,7 +52,7 @@ describe("register-helpers", () => {
       process.env.DD_TRACE_DEBUG = "true";
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => null);
 
-      setupTracer(tracer);
+      setupOpenTelemetry(tracer);
 
       expect(logSpy).toHaveBeenCalledWith(
         "[unplugin-datadog-apm] TracerProvider registered with OTel API",
@@ -62,7 +64,7 @@ describe("register-helpers", () => {
     it("does not log when DD_TRACE_DEBUG is not set", () => {
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => null);
 
-      setupTracer(tracer);
+      setupOpenTelemetry(tracer);
 
       expect(logSpy).not.toHaveBeenCalled();
 
@@ -70,11 +72,17 @@ describe("register-helpers", () => {
     });
   });
 
-  describe("registerLoaderHook", () => {
+  describe("setupTracer (deprecated alias)", () => {
+    it("is an alias for setupOpenTelemetry", () => {
+      expect(setupTracer).toBe(setupOpenTelemetry);
+    });
+  });
+
+  describe("setupESMImports", () => {
     it("registers the dd-trace loader hook with default exclusions", async () => {
       const { register } = await import("node:module");
 
-      registerLoaderHook();
+      setupESMImports();
 
       expect(register).toHaveBeenCalledTimes(1);
       expect(register).toHaveBeenCalledWith(
@@ -88,7 +96,7 @@ describe("register-helpers", () => {
       const { register } = await import("node:module");
       const customExclusions = [/custom-pattern/, /another-pattern/];
 
-      registerLoaderHook(customExclusions);
+      setupESMImports(customExclusions);
 
       expect(register).toHaveBeenCalledWith(
         "dd-trace/loader-hook.mjs",
@@ -101,7 +109,7 @@ describe("register-helpers", () => {
       process.env.DD_TRACE_DEBUG = "true";
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => null);
 
-      registerLoaderHook();
+      setupESMImports();
 
       expect(logSpy).toHaveBeenCalledWith(
         "[unplugin-datadog-apm] ESM loader hook registered",
@@ -113,11 +121,17 @@ describe("register-helpers", () => {
     it("does not log when DD_TRACE_DEBUG is not set", () => {
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => null);
 
-      registerLoaderHook();
+      setupESMImports();
 
       expect(logSpy).not.toHaveBeenCalled();
 
       logSpy.mockRestore();
+    });
+  });
+
+  describe("registerLoaderHook (deprecated alias)", () => {
+    it("is an alias for setupESMImports", () => {
+      expect(registerLoaderHook).toBe(setupESMImports);
     });
   });
 

@@ -14,8 +14,8 @@
  */
 import tracer from "dd-trace";
 import {
-  registerLoaderHook,
-  setupTracer,
+  setupESMImports,
+  setupOpenTelemetry,
 } from "unplugin-datadog-apm/register-helpers";
 
 // Initialize dd-trace with custom configuration
@@ -65,10 +65,10 @@ tracer.use("fetch", {
 
 // Register TracerProvider with OpenTelemetry API
 // This enables trace.getActiveSpan() from @opentelemetry/api
-setupTracer(tracer);
+setupOpenTelemetry(tracer);
 
 // Register the ESM loader hook for module instrumentation
-registerLoaderHook();
+setupESMImports();
 
 if (process.env.DD_TRACE_DEBUG) {
   console.log("[custom-register] dd-trace initialized with custom config");
