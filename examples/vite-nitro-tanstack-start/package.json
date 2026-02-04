@@ -1,6 +1,6 @@
 {
   "name": "example-tanstack-start",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Example TanStack Start app with unplugin-datadog-apm",
   "type": "module",
