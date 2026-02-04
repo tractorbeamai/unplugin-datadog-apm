@@ -1,6 +1,6 @@
 {
   "name": "example-esbuild-express",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": true,
   "description": "Example Express API bundled with esbuild and unplugin-datadog-apm",
   "type": "module",

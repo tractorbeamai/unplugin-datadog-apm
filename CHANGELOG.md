@@ -1,5 +1,12 @@
 # unplugin-datadog-apm
 
+## 0.2.2
+
+### Patch Changes
+
+- 30bc266: chore: test CI release workflow
+- 30bc266: chore: test release workflow
+
 ## 0.2.1
 
 ### Patch Changes
